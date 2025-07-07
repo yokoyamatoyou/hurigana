@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import streamlit as st
 from core.utils import process_dataframe, to_excel_bytes
+from core import db
 
 EXCEL_MIME = (
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -10,6 +11,7 @@ EXCEL_MIME = (
 
 st.set_page_config(page_title="Furigana Checker")
 st.title("Excel フリガナ信頼度チェッカー")
+DB_CONN = db.init_db()
 
 if not os.getenv("OPENAI_API_KEY"):
     st.warning("OPENAI_API_KEY環境変数が設定されていません")
@@ -36,7 +38,7 @@ if "df" in st.session_state:
             progress.progress(done / total)
 
         with st.spinner("解析中..."):
-            out_df = process_dataframe(df, name_col, furi_col, on_progress)
+            out_df = process_dataframe(df, name_col, furi_col, on_progress, db_conn=DB_CONN)
         progress.empty()
         st.session_state.out_df = out_df
 
