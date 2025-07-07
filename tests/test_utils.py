@@ -95,3 +95,28 @@ def test_to_excel_bytes_no_template():
     out_bytes = to_excel_bytes(df)
     wb = load_workbook(BytesIO(out_bytes))
     assert wb.active["A2"].value == 2
+
+
+def test_process_dataframe_progress_and_batch_size():
+    df = pd.DataFrame(
+        {
+            "名前": ["太郎", "花子", "次郎"],
+            "フリガナ": ["タロウ", "ハナコ", "ジロウ"],
+        }
+    )
+
+    progress_calls = []
+
+    def on_progress(done: int, total: int) -> None:
+        progress_calls.append((done, total))
+
+    with patch("core.utils.scorer.gpt_candidates", return_value=[]):
+        process_dataframe(
+            df,
+            "名前",
+            "フリガナ",
+            on_progress=on_progress,
+            batch_size=2,
+        )
+
+    assert progress_calls == [(1, 3), (2, 3), (3, 3)]
