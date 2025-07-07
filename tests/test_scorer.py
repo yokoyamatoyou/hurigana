@@ -63,3 +63,11 @@ def test_gpt_candidates_uses_env_var(monkeypatch):
         mod.gpt_candidates("太郎")
 
     assert all(call.kwargs["model"] == "test-model" for call in mock_call.call_args_list)
+
+
+def test_default_model_when_env_missing(monkeypatch):
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    import importlib
+    mod = importlib.reload(scorer)
+    assert mod.DEFAULT_MODEL == "gpt-4o-mini"
+
