@@ -2,7 +2,7 @@ from __future__ import annotations
 from sudachipy import dictionary, tokenizer
 
 # Initialize Sudachi tokenizer with full dictionary once
-TOKENIZER = dictionary.Dictionary(dict_type="full").create()
+TOKENIZER = dictionary.Dictionary(dict="full").create()
 MODE = tokenizer.Tokenizer.SplitMode.C
 
 

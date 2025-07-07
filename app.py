@@ -4,6 +4,10 @@ import pandas as pd
 import streamlit as st
 from core.utils import process_dataframe, to_excel_bytes
 
+EXCEL_MIME = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
 st.set_page_config(page_title="Furigana Checker")
 st.title("Excel フリガナ信頼度チェッカー")
 
@@ -45,5 +49,5 @@ if "out_df" in st.session_state:
         label="保存してダウンロード",
         data=bytes_data,
         file_name="判定結果.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        mime=EXCEL_MIME,
     )

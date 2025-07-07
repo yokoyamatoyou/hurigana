@@ -1,12 +1,10 @@
 from __future__ import annotations
-from typing import Dict, List
+from typing import List
 import time
 import openai
+from functools import lru_cache
 
 client = openai.OpenAI()
-
-# simple in-memory cache of name -> candidate list
-_CANDIDATE_CACHE: Dict[str, List[str]] = {}
 
 
 def _call_with_backoff(**kwargs):
@@ -21,10 +19,9 @@ def _call_with_backoff(**kwargs):
     return client.chat.completions.create(**kwargs)
 
 
+@lru_cache(maxsize=128)
 def gpt_candidates(name: str) -> List[str]:
     """Return candidate readings for a name using two-phase GPT calls."""
-    if name in _CANDIDATE_CACHE:
-        return _CANDIDATE_CACHE[name]
     # phase 1: deterministic top reading
     prompt1 = f"{name} の読みをカタカナで1つだけ答えて"
     res1 = _call_with_backoff(
@@ -56,11 +53,12 @@ def gpt_candidates(name: str) -> List[str]:
             seen.add(c)
             uniq.append(c)
     uniq = uniq[:5]
-    _CANDIDATE_CACHE[name] = uniq
     return uniq
 
 
-def calc_confidence(row_reading: str, candidates: List[str]) -> tuple[int, str]:
+def calc_confidence(
+    row_reading: str, candidates: List[str]
+) -> tuple[int, str]:
     """Return confidence percentage and short reason."""
     for idx, reading in enumerate(candidates, start=1):
         if row_reading == reading:
