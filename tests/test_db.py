@@ -1,4 +1,5 @@
 import sqlite3
+from pathlib import Path
 import pandas as pd
 from core import db
 from core.utils import process_dataframe
@@ -9,6 +10,13 @@ def test_db_round_trip(tmp_path):
     conn = db.init_db(path)
     db.save_reading('太郎', 'タロウ', 90, 'cached', conn)
     assert db.get_reading('太郎', 'タロウ', conn) == (90, 'cached')
+
+
+def test_init_db_uses_env_var(tmp_path, monkeypatch):
+    path = tmp_path / 'sub' / 'c.db'
+    monkeypatch.setenv('FURIGANA_DB', str(path))
+    conn = db.init_db()
+    assert Path(conn.execute('PRAGMA database_list').fetchone()[2]) == path
 
 
 def test_process_dataframe_uses_cache(tmp_path):

@@ -16,6 +16,12 @@ Set your OpenAI API key:
 export OPENAI_API_KEY="sk-..."
 ```
 
+Optionally specify the SQLite cache location:
+
+```bash
+export FURIGANA_DB="/path/to/cache.db"
+```
+
 ## Usage
 
 Run the app locally:

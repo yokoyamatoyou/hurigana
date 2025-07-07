@@ -1,11 +1,22 @@
 from __future__ import annotations
+import os
 import sqlite3
 from pathlib import Path
 from typing import Optional, Tuple
 
 
-def init_db(path: str | Path = "furigana.db") -> sqlite3.Connection:
-    """Initialize and return a SQLite connection."""
+def init_db(path: str | Path | None = None) -> sqlite3.Connection:
+    """Initialize and return a SQLite connection.
+
+    If ``path`` is ``None`` the location is taken from the ``FURIGANA_DB``
+    environment variable and defaults to ``furigana.db``.  Parent directories
+    are created automatically.
+    """
+    if path is None:
+        path = os.getenv("FURIGANA_DB", "furigana.db")
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     with conn:
         conn.execute(
