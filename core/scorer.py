@@ -12,7 +12,7 @@ def _call_with_backoff(**kwargs):
     for _ in range(5):
         try:
             return client.chat.completions.create(**kwargs)
-        except openai.RateLimitError:
+        except (openai.RateLimitError, openai.OpenAIError):
             time.sleep(delay)
             delay *= 2
     return client.chat.completions.create(**kwargs)
