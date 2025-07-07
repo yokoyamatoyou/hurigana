@@ -8,3 +8,7 @@ def test_sudachi_reading_known():
 def test_sudachi_reading_latin():
     # Sudachi handles latin letters by transliteration
     assert parser.sudachi_reading("John") == "ジョン"
+
+
+def test_sudachi_reading_empty():
+    assert parser.sudachi_reading("") is None
