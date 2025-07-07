@@ -14,15 +14,32 @@ def process_dataframe(
     furi_col: str,
     on_progress: Optional[Callable[[int, int], None]] = None,
     db_conn: sqlite3.Connection | None = None,
+    batch_size: int = 50,
 ) -> pd.DataFrame:
-    """Process DataFrame rows in batches and append confidence columns."""
+    """Process DataFrame rows in batches and append confidence columns.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input data.
+    name_col : str
+        Name column.
+    furi_col : str
+        Furigana column.
+    on_progress : Callable[[int, int], None] | None
+        Optional callback receiving processed and total counts.
+    db_conn : sqlite3.Connection | None
+        Optional database connection for caching.
+    batch_size : int, default 50
+        Number of rows processed per batch.
+    """
     confs: list[int] = []
     reasons: list[str] = []
 
     total = len(df)
     processed = 0
-    for start in range(0, total, 50):
-        batch = df.iloc[start:start + 50]
+    for start in range(0, total, batch_size):
+        batch = df.iloc[start:start + batch_size]
         for _, row in batch.iterrows():
             name_val = row[name_col]
             name = "" if pd.isna(name_val) else str(name_val)

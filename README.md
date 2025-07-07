@@ -28,6 +28,9 @@ Optionally specify the SQLite cache location:
 export FURIGANA_DB="/path/to/cache.db"
 ```
 
+The ``process_dataframe`` helper accepts an optional ``batch_size`` argument
+to control how many rows are processed at once (default ``50``).
+
 ## Usage
 
 Run the app locally:
