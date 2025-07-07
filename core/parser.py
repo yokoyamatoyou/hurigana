@@ -1,5 +1,4 @@
 from __future__ import annotations
-import os
 from sudachipy import dictionary, tokenizer
 
 # Initialize Sudachi tokenizer with full dictionary once
