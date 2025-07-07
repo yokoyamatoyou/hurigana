@@ -28,7 +28,7 @@ def test_call_with_backoff_retries_api_connection_error():
 
 
 def test_gpt_candidates_caches_result():
-    scorer._CANDIDATE_CACHE.clear()
+    scorer.gpt_candidates.cache_clear()
     resp1 = types.SimpleNamespace(
         choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
     )
