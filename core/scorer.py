@@ -1,10 +1,12 @@
 from __future__ import annotations
 from typing import List
 import time
+import os
 import openai
 from functools import lru_cache
 
 client = openai.OpenAI()
+DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 
 def _call_with_backoff(**kwargs):
@@ -25,7 +27,7 @@ def gpt_candidates(name: str) -> List[str]:
     # phase 1: deterministic top reading
     prompt1 = f"{name} の読みをカタカナで1つだけ答えて"
     res1 = _call_with_backoff(
-        model="gpt-4o-mini",
+        model=DEFAULT_MODEL,
         messages=[{"role": "user", "content": prompt1}],
         temperature=0.0,
         logprobs=5,
@@ -36,7 +38,7 @@ def gpt_candidates(name: str) -> List[str]:
     # phase 2: up to 5 candidates
     prompt2 = f"{name} の読みをカタカナで答えて"
     res2 = _call_with_backoff(
-        model="gpt-4o-mini",
+        model=DEFAULT_MODEL,
         messages=[{"role": "user", "content": prompt2}],
         temperature=0.7,
         top_p=1.0,

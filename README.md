@@ -16,6 +16,12 @@ Set your OpenAI API key:
 export OPENAI_API_KEY="sk-..."
 ```
 
+Optionally choose the OpenAI model (defaults to `gpt-4o-mini`):
+
+```bash
+export OPENAI_MODEL="gpt-3.5-turbo"
+```
+
 Optionally specify the SQLite cache location:
 
 ```bash

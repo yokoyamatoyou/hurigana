@@ -46,3 +46,28 @@ def test_gpt_candidates_caches_result():
     assert first == ["カナ"]
     assert second == ["カナ"]
     assert mock_call.call_count == 2
+
+
+def test_gpt_candidates_uses_env_var(monkeypatch):
+    monkeypatch.setenv("OPENAI_MODEL", "test-model")
+    import importlib
+    mod = importlib.reload(scorer)
+    mod.gpt_candidates.cache_clear()
+    resp1 = types.SimpleNamespace(
+        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
+    )
+    resp2 = types.SimpleNamespace(
+        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
+    )
+    with patch("core.scorer._call_with_backoff", side_effect=[resp1, resp2]) as mock_call:
+        mod.gpt_candidates("太郎")
+
+    assert all(call.kwargs["model"] == "test-model" for call in mock_call.call_args_list)
+
+
+def test_default_model_when_env_missing(monkeypatch):
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    import importlib
+    mod = importlib.reload(scorer)
+    assert mod.DEFAULT_MODEL == "gpt-4o-mini"
+
