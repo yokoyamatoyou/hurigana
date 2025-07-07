@@ -57,8 +57,22 @@ def process_dataframe(
     return df
 
 
-def to_excel_bytes(df: pd.DataFrame) -> bytes:
-    buf = BytesIO()
-    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False)
-    return buf.getvalue()
+def to_excel_bytes(df: pd.DataFrame, template_bytes: bytes | None = None) -> bytes:
+    """Return Excel bytes for ``df`` using ``openpyxl``.
+
+    If ``template_bytes`` is provided the workbook is loaded and overwritten
+    with ``df`` while preserving existing formatting."""
+    if template_bytes:
+        buf = BytesIO(template_bytes)
+        with pd.ExcelWriter(
+            buf, engine="openpyxl", mode="a", if_sheet_exists="replace"
+        ) as writer:
+            sheet = writer.book.sheetnames[0] if writer.book.sheetnames else "Sheet1"
+            df.to_excel(writer, index=False, sheet_name=sheet)
+        buf.seek(0)
+        return buf.getvalue()
+    else:
+        buf = BytesIO()
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False)
+        return buf.getvalue()

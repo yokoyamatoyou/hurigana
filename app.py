@@ -13,6 +13,7 @@ if not os.getenv("OPENAI_API_KEY"):
 uploaded = st.file_uploader("Excelを選択", type=["xlsx"])
 
 if "df" not in st.session_state and uploaded:
+    st.session_state.template_bytes = uploaded.getvalue()
     st.session_state.df = pd.read_excel(uploaded)
 
 if "df" in st.session_state:
@@ -38,7 +39,8 @@ if "df" in st.session_state:
 if "out_df" in st.session_state:
     st.write("結果プレビュー:")
     st.dataframe(st.session_state.out_df.head())
-    bytes_data = to_excel_bytes(st.session_state.out_df)
+    tmpl = st.session_state.get("template_bytes")
+    bytes_data = to_excel_bytes(st.session_state.out_df, template_bytes=tmpl)
     st.download_button(
         label="保存してダウンロード",
         data=bytes_data,
