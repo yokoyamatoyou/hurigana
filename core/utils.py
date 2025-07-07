@@ -1,7 +1,8 @@
 from __future__ import annotations
 import pandas as pd
 from io import BytesIO
-from . import parser, scorer
+from . import parser, scorer, db
+import sqlite3
 
 
 from typing import Callable, Optional
@@ -12,6 +13,7 @@ def process_dataframe(
     name_col: str,
     furi_col: str,
     on_progress: Optional[Callable[[int, int], None]] = None,
+    db_conn: sqlite3.Connection | None = None,
 ) -> pd.DataFrame:
     """Process DataFrame rows in batches and append confidence columns."""
     confs: list[int] = []
@@ -33,6 +35,16 @@ def process_dataframe(
                 continue
             reading_val = row[furi_col] if furi_col in df.columns else ""
             reading = "" if pd.isna(reading_val) else str(reading_val)
+
+            if db_conn:
+                cached = db.get_reading(name, reading, db_conn)
+                if cached:
+                    confs.append(cached[0])
+                    reasons.append(cached[1])
+                    processed += 1
+                    if on_progress:
+                        on_progress(processed, total)
+                    continue
             sudachi_kana = parser.sudachi_reading(name)
             if sudachi_kana and sudachi_kana == reading:
                 confs.append(95)
@@ -49,6 +61,8 @@ def process_dataframe(
             conf, reason = scorer.calc_confidence(reading, candidates)
             confs.append(conf)
             reasons.append(reason)
+            if db_conn:
+                db.save_reading(name, reading, conf, reason, db_conn)
             processed += 1
             if on_progress:
                 on_progress(processed, total)
