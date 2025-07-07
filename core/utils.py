@@ -22,15 +22,17 @@ def process_dataframe(
     for start in range(0, total, 50):
         batch = df.iloc[start : start + 50]
         for _, row in batch.iterrows():
-            name = str(row[name_col])
-            if len(name) > 50:
+            name_val = row[name_col]
+            name = "" if pd.isna(name_val) else str(name_val)
+            if not name or len(name) > 50:
                 confs.append(0)
                 reasons.append("長すぎる")
                 processed += 1
                 if on_progress:
                     on_progress(processed, total)
                 continue
-            reading = str(row[furi_col]) if furi_col in df.columns else ""
+            reading_val = row[furi_col] if furi_col in df.columns else ""
+            reading = "" if pd.isna(reading_val) else str(reading_val)
             sudachi_kana = parser.sudachi_reading(name)
             if sudachi_kana and sudachi_kana == reading:
                 confs.append(95)
