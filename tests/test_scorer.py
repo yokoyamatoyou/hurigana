@@ -15,8 +15,10 @@ def test_call_with_backoff_retries_api_connection_error():
             raise result
         return result
 
-    with patch("core.scorer.client.chat.completions.create", side_effect=side_effect) as mock_create, \
-         patch("time.sleep") as sleep_mock:
+    with patch(
+        "core.scorer.client.chat.completions.create",
+        side_effect=side_effect,
+    ) as mock_create, patch("time.sleep") as sleep_mock:
         result = scorer._call_with_backoff(model="dummy", messages=[])
 
     assert result is success

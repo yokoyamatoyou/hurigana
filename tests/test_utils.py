@@ -14,7 +14,7 @@ def test_process_dataframe_sudachi_match():
         'フリガナ': ['タロウ', 'ハナコ'],
     })
 
-    with patch('core.utils.scorer.gpt_candidates', return_value=[] ) as mock:
+    with patch('core.utils.scorer.gpt_candidates', return_value=[]) as mock:
         out = process_dataframe(df, '名前', 'フリガナ')
 
     assert list(out['信頼度']) == [95, 95]
@@ -37,9 +37,16 @@ def test_process_dataframe_long_name():
 def test_process_dataframe_gpt_called():
     df = pd.DataFrame({'名前': ['未知'], 'フリガナ': ['ミチ']})
 
-    with patch('core.utils.parser.sudachi_reading', return_value=None), \
-         patch('core.utils.scorer.gpt_candidates', return_value=['ミチ', 'ミチョ']), \
-         patch('core.utils.scorer.calc_confidence', wraps=scorer.calc_confidence) as conf_mock:
+    with patch(
+        'core.utils.parser.sudachi_reading',
+        return_value=None,
+    ), patch(
+        'core.utils.scorer.gpt_candidates',
+        return_value=['ミチ', 'ミチョ'],
+    ), patch(
+        'core.utils.scorer.calc_confidence',
+        wraps=scorer.calc_confidence,
+    ) as conf_mock:
         out = process_dataframe(df, '名前', 'フリガナ')
 
     assert out['信頼度'][0] == 85
@@ -61,7 +68,7 @@ def test_process_dataframe_nan_name():
 def test_process_dataframe_nan_furigana():
     df = pd.DataFrame({'名前': ['太郎'], 'フリガナ': [pd.NA]})
 
-    with patch('core.utils.scorer.gpt_candidates', return_value=['タロウ'] ) as mock:
+    with patch('core.utils.scorer.gpt_candidates', return_value=['タロウ']) as mock:
         out = process_dataframe(df, '名前', 'フリガナ')
 
     assert out['信頼度'][0] == 30
