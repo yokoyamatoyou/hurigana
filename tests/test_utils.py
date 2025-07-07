@@ -1,10 +1,6 @@
-import os
-import sys
-
 import pandas as pd
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from core.utils import process_dataframe
 from core import scorer
 from core.utils import to_excel_bytes
