@@ -7,6 +7,9 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from core.utils import process_dataframe
 from core import scorer
+from core.utils import to_excel_bytes
+from openpyxl import load_workbook, Workbook
+from io import BytesIO
 
 
 def test_process_dataframe_sudachi_match():
@@ -46,3 +49,17 @@ def test_process_dataframe_gpt_called():
     assert out['信頼度'][0] == 85
     assert out['理由'][0] == '候補1位一致'
     conf_mock.assert_called_once()
+
+
+def test_to_excel_bytes_template():
+    df = pd.DataFrame({"A": [1]})
+    wb = Workbook()
+    ws = wb.active
+    ws["A1"] = "old"
+    buf = BytesIO()
+    wb.save(buf)
+    tmpl = buf.getvalue()
+
+    out_bytes = to_excel_bytes(df, template_bytes=tmpl)
+    wb2 = load_workbook(BytesIO(out_bytes))
+    assert wb2.active["A2"].value == 1
