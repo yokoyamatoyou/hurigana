@@ -1,44 +1,66 @@
 from __future__ import annotations
-import os
-from typing import List, Tuple
+from typing import List
+import time
 import openai
 
 client = openai.OpenAI()
 
 
-def gpt_readings(name: str, temperature: float) -> List[Tuple[str, float]]:
-    """Query GPT model for reading candidates with probabilities."""
-    prompt = f"人名『{name}』の読みをカタカナで5件まで『読み|確率%』形式で出力"
-    response = client.chat.completions.create(
+def _call_with_backoff(**kwargs):
+    """Call OpenAI API with exponential backoff on rate limits."""
+    delay = 1
+    for _ in range(5):
+        try:
+            return client.chat.completions.create(**kwargs)
+        except openai.RateLimitError:
+            time.sleep(delay)
+            delay *= 2
+    return client.chat.completions.create(**kwargs)
+
+
+def gpt_candidates(name: str) -> List[str]:
+    """Return candidate readings for a name using two-phase GPT calls."""
+    # phase 1: deterministic top reading
+    prompt1 = f"{name} の読みをカタカナで1つだけ答えて"
+    res1 = _call_with_backoff(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=temperature,
-        logprobs=True,
-        top_p=1.0,
+        messages=[{"role": "user", "content": prompt1}],
+        temperature=0.0,
+        logprobs=5,
         n=1,
     )
-    text = response.choices[0].message.content
-    # naive parse: expecting lines like カタカナ|xx%
-    result: List[Tuple[str, float]] = []
-    for line in text.splitlines():
-        if "|" in line:
-            reading, prob = line.split("|", 1)
-            try:
-                prob = float(prob.replace("%", "").strip())
-            except ValueError:
-                prob = 0.0
-            result.append((reading.strip(), prob))
-    return result
+    top = res1.choices[0].message.content.strip()
+
+    # phase 2: up to 5 candidates
+    prompt2 = f"{name} の読みをカタカナで答えて"
+    res2 = _call_with_backoff(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt2}],
+        temperature=0.7,
+        top_p=1.0,
+        n=5,
+    )
+    cand = [c.message.content.strip() for c in res2.choices]
+    if top not in cand:
+        cand.insert(0, top)
+    # deduplicate while preserving order
+    seen = set()
+    uniq: List[str] = []
+    for c in cand:
+        if c not in seen:
+            seen.add(c)
+            uniq.append(c)
+    return uniq[:5]
 
 
-def calc_confidence(row_reading: str, candidates: List[Tuple[str, float]]) -> tuple[int, str]:
+def calc_confidence(row_reading: str, candidates: List[str]) -> tuple[int, str]:
     """Return confidence percentage and short reason."""
-    for idx, (reading, _) in enumerate(candidates, start=1):
+    for idx, reading in enumerate(candidates, start=1):
         if row_reading == reading:
             if idx == 1:
-                return 95, "辞書候補1位一致"
+                return 85, "候補1位一致"
             elif idx <= 3:
-                return 85, "3位内一致"
+                return 70, "3位内一致"
             else:
                 return 60, "5位内一致"
     return 30, "候補外･要確認"
