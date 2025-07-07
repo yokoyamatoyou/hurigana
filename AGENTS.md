@@ -1,0 +1,61 @@
+# Project AGENTS instructions
+
+This repository is for implementing a Streamlit GUI application that uploads an Excel file, calculates reliability of human name readings (furigana), and overwrites the Excel file with the results.
+
+## Environment
+* **Python 3.11**.
+* Requires packages:
+  - `sudachipy`
+  - `sudachidict-full`
+  - `openai>=1.30.0`
+  - `pandas>=2.3`
+  - `openpyxl`, `xlsxwriter`
+  - `streamlit>=1.35`
+
+Use `pip install sudachipy sudachidict-full openai pandas streamlit openpyxl xlsxwriter` to install dependencies.
+
+## API key
+The OpenAI API key is taken from the environment variable `OPENAI_API_KEY`.
+
+## Structure
+```
+project/
+├─ app.py            # Streamlit GUI
+├─ core/
+│   ├─ parser.py     # Sudachi + dictionary preprocessing
+│   ├─ scorer.py     # GPT invocation & confidence scoring
+│   └─ utils.py      # shared utilities
+└─ requirements.txt
+```
+
+The application uses a single Streamlit page with file upload, processing, and download in one workflow. Sudachi tokenizer is held globally for speed.
+
+## Processing Flow
+1. Read Excel file with pandas.
+2. For each name, use SudachiPy with `SudachiDict-full` to get the standard reading. If found, confidence 95% with reason "辞書候補1位一致".
+3. For unknown words, call GPT-4.1 mini in two phases:
+   - Phase 1: `temperature=0.0`, `logprobs=5` to get top reading.
+   - Phase 2: `temperature=0.7`, `top_p=1.0`, `n=5` to get up to five candidates.
+4. Calculate confidence based on candidate ranking and provide a short reason (within 20 characters).
+5. Combine results into DataFrame and export to Excel using `openpyxl` to preserve formatting.
+6. Provide a download button for the processed file.
+
+## Error handling
+* Process in batches of 50 rows and retry with exponential backoff on API rate limits.
+* Validate name length (≤50 chars).
+* Allow user to choose the target column via `st.selectbox`.
+
+## Deployment
+Run locally with:
+```bash
+export OPENAI_API_KEY="sk-..."
+streamlit run app.py
+```
+
+Streamlit Community Cloud or Hugging Face Spaces can host the app with `requirements.txt` and `app.py`.
+
+## Future ideas
+* Use RAG with a SQLite + ChromaDB for previously confirmed readings.
+* Add accent information via Whisper.
+* Support multilingual names with fallback to pykakasi and LLM.
+
