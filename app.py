@@ -1,10 +1,14 @@
 from __future__ import annotations
+import os
 import pandas as pd
 import streamlit as st
 from core.utils import process_dataframe, to_excel_bytes
 
 st.set_page_config(page_title="Furigana Checker")
 st.title("Excel フリガナ信頼度チェッカー")
+
+if not os.getenv("OPENAI_API_KEY"):
+    st.warning("OPENAI_API_KEY環境変数が設定されていません")
 
 uploaded = st.file_uploader("Excelを選択", type=["xlsx"])
 
@@ -21,8 +25,14 @@ if "df" in st.session_state:
     furi_col = st.selectbox("フリガナ列を選択", columns, key="furi_col")
 
     if st.button("解析実行"):
+        progress = st.progress(0.0)
+
+        def on_progress(done: int, total: int) -> None:
+            progress.progress(done / total)
+
         with st.spinner("解析中..."):
-            out_df = process_dataframe(df, name_col, furi_col)
+            out_df = process_dataframe(df, name_col, furi_col, on_progress)
+        progress.empty()
         st.session_state.out_df = out_df
 
 if "out_df" in st.session_state:
