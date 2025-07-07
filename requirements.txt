@@ -1,0 +1,7 @@
+sudachipy
+sudachidict-full
+openai>=1.30.0
+pandas>=2.3
+streamlit>=1.35
+openpyxl
+xlsxwriter
