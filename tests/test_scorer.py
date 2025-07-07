@@ -1,6 +1,7 @@
 import os
 import sys
 from unittest.mock import patch
+import types
 import openai
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -24,3 +25,25 @@ def test_call_with_backoff_retries_api_connection_error():
     assert result is success
     assert mock_create.call_count == 2
     sleep_mock.assert_called_once()
+
+
+def test_gpt_candidates_caches_result():
+    scorer._CANDIDATE_CACHE.clear()
+    resp1 = types.SimpleNamespace(
+        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
+    )
+    resp2 = types.SimpleNamespace(
+        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
+    )
+    responses = [resp1, resp2]
+
+    def side_effect(**kwargs):
+        return responses.pop(0)
+
+    with patch("core.scorer._call_with_backoff", side_effect=side_effect) as mock_call:
+        first = scorer.gpt_candidates("太郎")
+        second = scorer.gpt_candidates("太郎")
+
+    assert first == ["カナ"]
+    assert second == ["カナ"]
+    assert mock_call.call_count == 2

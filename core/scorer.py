@@ -1,9 +1,12 @@
 from __future__ import annotations
-from typing import List
+from typing import Dict, List
 import time
 import openai
 
 client = openai.OpenAI()
+
+# simple in-memory cache of name -> candidate list
+_CANDIDATE_CACHE: Dict[str, List[str]] = {}
 
 
 def _call_with_backoff(**kwargs):
@@ -20,6 +23,8 @@ def _call_with_backoff(**kwargs):
 
 def gpt_candidates(name: str) -> List[str]:
     """Return candidate readings for a name using two-phase GPT calls."""
+    if name in _CANDIDATE_CACHE:
+        return _CANDIDATE_CACHE[name]
     # phase 1: deterministic top reading
     prompt1 = f"{name} の読みをカタカナで1つだけ答えて"
     res1 = _call_with_backoff(
@@ -50,7 +55,9 @@ def gpt_candidates(name: str) -> List[str]:
         if c not in seen:
             seen.add(c)
             uniq.append(c)
-    return uniq[:5]
+    uniq = uniq[:5]
+    _CANDIDATE_CACHE[name] = uniq
+    return uniq
 
 
 def calc_confidence(row_reading: str, candidates: List[str]) -> tuple[int, str]:

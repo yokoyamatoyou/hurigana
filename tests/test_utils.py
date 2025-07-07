@@ -85,3 +85,10 @@ def test_to_excel_bytes_template():
     out_bytes = to_excel_bytes(df, template_bytes=tmpl)
     wb2 = load_workbook(BytesIO(out_bytes))
     assert wb2.active["A2"].value == 1
+
+
+def test_to_excel_bytes_no_template():
+    df = pd.DataFrame({"A": [2]})
+    out_bytes = to_excel_bytes(df)
+    wb = load_workbook(BytesIO(out_bytes))
+    assert wb.active["A2"].value == 2
