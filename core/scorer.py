@@ -73,27 +73,27 @@ def gpt_candidates(name: str) -> List[str]:
 
 
 async def async_gpt_candidates(name: str) -> List[str]:
-    """Async version of ``gpt_candidates``."""
-    # phase 1: deterministic top reading
+    """Async version of ``gpt_candidates`` that runs both phases in parallel."""
     prompt1 = f"{name} の読みをカタカナで1つだけ答えて"
-    res1 = await _acall_with_backoff(
-        model=DEFAULT_MODEL,
-        messages=[{"role": "user", "content": prompt1}],
-        temperature=0.0,
-        logprobs=5,
-        n=1,
+    prompt2 = f"{name} の読みをカタカナで答えて"
+
+    res1, res2 = await asyncio.gather(
+        _acall_with_backoff(
+            model=DEFAULT_MODEL,
+            messages=[{"role": "user", "content": prompt1}],
+            temperature=0.0,
+            logprobs=5,
+            n=1,
+        ),
+        _acall_with_backoff(
+            model=DEFAULT_MODEL,
+            messages=[{"role": "user", "content": prompt2}],
+            temperature=0.7,
+            top_p=1.0,
+            n=5,
+        ),
     )
     top = res1.choices[0].message.content.strip()
-
-    # phase 2: up to 5 candidates
-    prompt2 = f"{name} の読みをカタカナで答えて"
-    res2 = await _acall_with_backoff(
-        model=DEFAULT_MODEL,
-        messages=[{"role": "user", "content": prompt2}],
-        temperature=0.7,
-        top_p=1.0,
-        n=5,
-    )
     cand = [c.message.content.strip() for c in res2.choices]
     if top not in cand:
         cand.insert(0, top)
