@@ -33,7 +33,8 @@ to control how many rows are processed at once (default ``50``).
 
 ## Usage
 
-Run the app locally:
+Run the app locally. The Streamlit interface now leverages the asynchronous
+processing helpers to reduce waiting time on large files:
 
 ```bash
 streamlit run app.py

@@ -2,7 +2,8 @@ from __future__ import annotations
 import os
 import pandas as pd
 import streamlit as st
-from core.utils import process_dataframe, to_excel_bytes
+import asyncio
+from core.utils import async_process_dataframe, to_excel_bytes
 from core import db
 
 EXCEL_MIME = (
@@ -38,7 +39,16 @@ if "df" in st.session_state:
             progress.progress(done / total)
 
         with st.spinner("解析中..."):
-            out_df = process_dataframe(df, name_col, furi_col, on_progress, db_conn=DB_CONN)
+            out_df = asyncio.run(
+                async_process_dataframe(
+                    df,
+                    name_col,
+                    furi_col,
+                    on_progress,
+                    db_conn=DB_CONN,
+                    concurrency=10,
+                )
+            )
         progress.empty()
         st.session_state.out_df = out_df
 
