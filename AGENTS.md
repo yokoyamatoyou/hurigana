@@ -30,12 +30,20 @@ project/
 
 The application uses a single Streamlit page with file upload, processing, and download in one workflow. Sudachi tokenizer is held globally for speed.
 
+## Furigana Entry Rules
+These guidelines standardize how operators type readings:
+
+1. **Use full-size characters for palatal sounds** – e.g. type `ｷﾖｳｺ` instead of `ｷｮｳｺ`.
+2. **Handle voiced sounds in either form** – both `ﾀﾞ` as one half-width character and `ﾀﾞ` typed as `ﾀ` followed by `ﾞ` are accepted.
+3. **Other characters** – "ヲ" and "ー" are entered as is without conversion.
+
 ## Processing Flow
 1. Read Excel file with pandas.
 2. For each name, use SudachiPy with `SudachiDict-full` to get the standard reading. If found, confidence 95% with reason "辞書候補1位一致".
 3. For unknown words, call GPT-4.1 mini in two phases:
    - Phase 1: `temperature=0.0`, `logprobs=5` to get top reading.
    - Phase 2: `temperature=0.7`, `top_p=1.0`, `n=5` to get up to five candidates.
+   - This two-phase algorithm is kept as-is for consistent scoring.
 4. Calculate confidence based on candidate ranking and provide a short reason (within 20 characters).
 5. Combine results into DataFrame and export to Excel using `openpyxl` to preserve formatting.
 6. Provide a download button for the processed file.
