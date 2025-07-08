@@ -4,10 +4,15 @@ This repository provides a Streamlit application for checking the reliability of
 
 ## Setup
 
-Install dependencies with Python 3.11:
+Install dependencies with Python 3.11.  You can use ``requirements.txt`` or
+install the key packages individually:
 
 ```bash
 pip install -r requirements.txt
+```
+
+```bash
+pip install sudachipy sudachidict-full openai pandas streamlit openpyxl xlsxwriter
 ```
 
 Set your OpenAI API key:
@@ -35,6 +40,17 @@ The ``process_dataframe`` helper accepts an optional ``batch_size`` argument
 to control how many rows are processed at once (default ``50``). Duplicate
 names are consolidated globally before querying the GPT API.
 
+## Furigana Entry Rules
+
+When typing readings into Excel, follow these conventions so the checker can
+produce consistent results:
+
+1. Use **full-size characters** for palatal sounds—for example, type ``ｷﾖｳｺ``
+   instead of ``ｷｮｳｺ``.
+2. Both forms of voiced sounds are accepted: either the single half-width
+   character ``ﾀﾞ`` or the base character ``ﾀ`` followed by ``ﾞ``.
+3. Characters like ``ヲ`` and ``ー`` are entered as is without conversion.
+
 ## Usage
 
 Run the app locally. The Streamlit interface now leverages the asynchronous
@@ -52,3 +68,26 @@ variant additionally allows limited concurrency for further speedups.
 
 For details on the async implementation and tuning options, see
 [docs/performance_plan.md](docs/performance_plan.md).
+
+## Example
+
+The library can also be used programmatically. The snippet below
+demonstrates checking a single pair of name and reading:
+
+```python
+import pandas as pd
+from core.utils import process_dataframe
+
+df = pd.DataFrame({"名前": ["田中　堅"], "フリガナ": ["ﾀﾅｶ ｶﾀｼ"]})
+out = process_dataframe(df, "名前", "フリガナ")
+print(out)
+```
+
+Running this prints a DataFrame with the confidence score and reason.
+The exact values depend on the GPT candidate readings, but it will look
+similar to the following:
+
+```
+     名前     フリガナ  信頼度       理由
+0  田中　堅  ﾀﾅｶ ｶﾀｼ   30  候補外･要確認
+```
