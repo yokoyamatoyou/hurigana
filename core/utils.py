@@ -175,11 +175,11 @@ async def async_process_dataframe(
         for start in range(0, len(names), batch_size):
             chunk = names[start:start + batch_size]
             tasks = [fetch_candidates(n) for n in chunk]
-            results = await asyncio.gather(*tasks)
-            name_to_cands = {n: c for n, c in results}
+            name_to_cands = {}
 
-            for name in chunk:
-                candidates = name_to_cands.get(name, [])
+            for coro in asyncio.as_completed(tasks):
+                name, candidates = await coro
+                name_to_cands[name] = candidates
                 for idx, reading in pending[name]:
                     conf, reason = scorer.calc_confidence(reading, candidates)
                     confs[idx] = conf
