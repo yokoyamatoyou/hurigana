@@ -98,6 +98,23 @@ def test_to_excel_bytes_no_template():
     assert wb.active["A2"].value == 2
 
 
+def test_to_excel_bytes_uses_xlsxwriter():
+    df = pd.DataFrame({"A": [3]})
+    call_engines = []
+    orig_writer = pd.ExcelWriter
+
+    def spy_writer(*args, **kwargs):
+        call_engines.append(kwargs.get("engine"))
+        return orig_writer(*args, **kwargs)
+
+    with patch("pandas.ExcelWriter", side_effect=spy_writer):
+        out_bytes = to_excel_bytes(df)
+
+    assert call_engines[0] == "xlsxwriter"
+    wb = load_workbook(BytesIO(out_bytes))
+    assert wb.active["A2"].value == 3
+
+
 def test_process_dataframe_progress_and_batch_size():
     df = pd.DataFrame(
         {
