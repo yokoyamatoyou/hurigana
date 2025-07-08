@@ -68,8 +68,7 @@ def gpt_candidates(name: str) -> List[str]:
         if c not in seen:
             seen.add(c)
             uniq.append(c)
-    uniq = uniq[:5]
-    return uniq
+    return uniq[:5]
 
 
 async def async_gpt_candidates(name: str) -> List[str]:
@@ -103,8 +102,7 @@ async def async_gpt_candidates(name: str) -> List[str]:
         if c not in seen:
             seen.add(c)
             uniq.append(c)
-    uniq = uniq[:5]
-    return uniq
+    return uniq[:5]
 
 
 def calc_confidence(

@@ -227,6 +227,8 @@ def to_excel_bytes(
         return buf.getvalue()
     else:
         buf = BytesIO()
-        with pd.ExcelWriter(buf, engine="xlsxwriter") as writer:
+        with pd.ExcelWriter(
+            buf, engine="xlsxwriter", engine_kwargs={"options": {"constant_memory": True}}
+        ) as writer:
             df.to_excel(writer, index=False)
         return buf.getvalue()
