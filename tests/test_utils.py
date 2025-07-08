@@ -1,8 +1,9 @@
 import pandas as pd
 from unittest.mock import patch
+import asyncio
 
 from core.utils import process_dataframe
-from core import scorer
+from core import scorer, utils
 from core.utils import to_excel_bytes
 from openpyxl import load_workbook, Workbook
 from io import BytesIO
@@ -120,3 +121,23 @@ def test_process_dataframe_progress_and_batch_size():
         )
 
     assert progress_calls == [(1, 3), (2, 3), (3, 3)]
+
+
+def test_async_process_dataframe_matches_sync():
+    df = pd.DataFrame({'名前': ['未知'], 'フリガナ': ['ミチ']})
+
+    async def run_test():
+        with patch('core.utils.parser.sudachi_reading', return_value=None), patch(
+            'core.utils.scorer.async_gpt_candidates', return_value=['ミチ']
+        ) as g_mock:
+            out = await utils.async_process_dataframe(df, '名前', 'フリガナ', batch_size=1)
+        assert g_mock.called
+        return out
+
+    result = asyncio.run(run_test())
+
+    with patch('core.utils.parser.sudachi_reading', return_value=None), patch(
+        'core.utils.scorer.gpt_candidates', return_value=['ミチ']
+    ):
+        expected = process_dataframe(df, '名前', 'フリガナ')
+    pd.testing.assert_frame_equal(result, expected)

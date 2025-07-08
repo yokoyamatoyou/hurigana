@@ -2,10 +2,12 @@ from __future__ import annotations
 from typing import List
 import time
 import os
+import asyncio
 import openai
 from functools import lru_cache
 
 client = openai.OpenAI()
+async_client = openai.AsyncOpenAI()
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 
@@ -19,6 +21,18 @@ def _call_with_backoff(**kwargs):
             time.sleep(delay)
             delay *= 2
     return client.chat.completions.create(**kwargs)
+
+
+async def _acall_with_backoff(**kwargs):
+    """Async version of ``_call_with_backoff``."""
+    delay = 1
+    for _ in range(5):
+        try:
+            return await async_client.chat.completions.create(**kwargs)
+        except (openai.RateLimitError, openai.OpenAIError):
+            await asyncio.sleep(delay)
+            delay *= 2
+    return await async_client.chat.completions.create(**kwargs)
 
 
 @lru_cache(maxsize=128)
@@ -48,6 +62,41 @@ def gpt_candidates(name: str) -> List[str]:
     if top not in cand:
         cand.insert(0, top)
     # deduplicate while preserving order
+    seen = set()
+    uniq: List[str] = []
+    for c in cand:
+        if c not in seen:
+            seen.add(c)
+            uniq.append(c)
+    uniq = uniq[:5]
+    return uniq
+
+
+async def async_gpt_candidates(name: str) -> List[str]:
+    """Async version of ``gpt_candidates``."""
+    # phase 1: deterministic top reading
+    prompt1 = f"{name} の読みをカタカナで1つだけ答えて"
+    res1 = await _acall_with_backoff(
+        model=DEFAULT_MODEL,
+        messages=[{"role": "user", "content": prompt1}],
+        temperature=0.0,
+        logprobs=5,
+        n=1,
+    )
+    top = res1.choices[0].message.content.strip()
+
+    # phase 2: up to 5 candidates
+    prompt2 = f"{name} の読みをカタカナで答えて"
+    res2 = await _acall_with_backoff(
+        model=DEFAULT_MODEL,
+        messages=[{"role": "user", "content": prompt2}],
+        temperature=0.7,
+        top_p=1.0,
+        n=5,
+    )
+    cand = [c.message.content.strip() for c in res2.choices]
+    if top not in cand:
+        cand.insert(0, top)
     seen = set()
     uniq: List[str] = []
     for c in cand:
