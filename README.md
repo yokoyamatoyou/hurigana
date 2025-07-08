@@ -43,8 +43,8 @@ streamlit run app.py
 Upload an Excel file, select the name and furigana columns, and download the result with confidence scores.
 
 The library now also exposes ``async_process_dataframe`` for asynchronous
-processing with limited concurrency. This can greatly reduce runtime when a
-large number of rows must be checked.
+processing with limited concurrency. Duplicate names are consolidated so GPT is
+called only once per unique value, further reducing runtime on large inputs.
 
 For details on the async implementation and tuning options, see
 [docs/performance_plan.md](docs/performance_plan.md).

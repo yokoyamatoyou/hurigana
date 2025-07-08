@@ -100,26 +100,41 @@ async def async_process_dataframe(
     batch_size: int = 50,
     concurrency: int = 10,
 ) -> pd.DataFrame:
-    """Asynchronous version of ``process_dataframe`` with limited concurrency."""
+    """Asynchronous version of ``process_dataframe`` with limited concurrency.
+
+    Names are deduplicated globally so GPT is called only once per unique name,
+    greatly reducing runtime when many duplicates exist.
+    """
     confs: list[int | None] = [None] * len(df)
     reasons: list[str | None] = [None] * len(df)
     total = len(df)
     processed = 0
     sem = Semaphore(concurrency)
 
-    async def handle_row(idx: int, row: pd.Series) -> None:
-        nonlocal processed
+    async def fetch_candidates(name: str) -> tuple[str, list[str]]:
+        async with sem:
+            try:
+                cands = await scorer.async_gpt_candidates(name)
+            except Exception:
+                cands = []
+        return name, cands
+
+    pending: dict[str, list[tuple[int, str]]] = {}
+
+    # first pass: handle cached/sudachi results and collect GPT targets
+    for idx, row in df.iterrows():
         name_val = row[name_col]
         name = "" if pd.isna(name_val) else str(name_val)
+        reading_val = row[furi_col] if furi_col in df.columns else ""
+        reading = "" if pd.isna(reading_val) else str(reading_val)
+
         if not name or len(name) > 50:
             confs[idx] = 0
             reasons[idx] = "長すぎる"
             processed += 1
             if on_progress:
                 on_progress(processed, total)
-            return
-        reading_val = row[furi_col] if furi_col in df.columns else ""
-        reading = "" if pd.isna(reading_val) else str(reading_val)
+            continue
 
         if db_conn:
             cached = db.get_reading(name, reading, db_conn)
@@ -129,7 +144,7 @@ async def async_process_dataframe(
                 processed += 1
                 if on_progress:
                     on_progress(processed, total)
-                return
+                continue
 
         sudachi_kana = parser.sudachi_reading(name)
         if sudachi_kana and sudachi_kana == reading:
@@ -138,26 +153,29 @@ async def async_process_dataframe(
             processed += 1
             if on_progress:
                 on_progress(processed, total)
-            return
+            continue
 
-        try:
-            async with sem:
-                candidates = await scorer.async_gpt_candidates(name)
-        except Exception:
-            candidates = []
-        conf, reason = scorer.calc_confidence(reading, candidates)
-        confs[idx] = conf
-        reasons[idx] = reason
-        if db_conn:
-            db.save_reading(name, reading, conf, reason, db_conn)
-        processed += 1
-        if on_progress:
-            on_progress(processed, total)
+        pending.setdefault(name, []).append((idx, reading))
 
-    for start in range(0, total, batch_size):
-        batch = df.iloc[start:start + batch_size]
-        tasks = [handle_row(idx, row) for idx, row in batch.iterrows()]
-        await asyncio.gather(*tasks)
+    if pending:
+        names = list(pending)
+        for start in range(0, len(names), batch_size):
+            chunk = names[start:start + batch_size]
+            tasks = [fetch_candidates(n) for n in chunk]
+            results = await asyncio.gather(*tasks)
+            name_to_cands = {n: c for n, c in results}
+
+            for name in chunk:
+                candidates = name_to_cands.get(name, [])
+                for idx, reading in pending[name]:
+                    conf, reason = scorer.calc_confidence(reading, candidates)
+                    confs[idx] = conf
+                    reasons[idx] = reason
+                    if db_conn:
+                        db.save_reading(name, reading, conf, reason, db_conn)
+                    processed += 1
+                    if on_progress:
+                        on_progress(processed, total)
 
     df = df.copy()
     df["信頼度"] = confs

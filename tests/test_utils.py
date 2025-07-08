@@ -141,3 +141,19 @@ def test_async_process_dataframe_matches_sync():
     ):
         expected = process_dataframe(df, '名前', 'フリガナ')
     pd.testing.assert_frame_equal(result, expected)
+
+
+def test_async_process_dataframe_deduplicates():
+    df = pd.DataFrame({'名前': ['未知', '未知'], 'フリガナ': ['ミチ', 'ミチ']})
+
+    async def run_test():
+        with patch('core.utils.parser.sudachi_reading', return_value=None), patch(
+            'core.utils.scorer.async_gpt_candidates', return_value=['ミチ']
+        ) as g_mock:
+            out = await utils.async_process_dataframe(df, '名前', 'フリガナ', batch_size=2)
+        assert g_mock.call_count == 1
+        return out
+
+    result = asyncio.run(run_test())
+    assert list(result['信頼度']) == [85, 85]
+    assert list(result['理由']) == ['候補1位一致', '候補1位一致']
