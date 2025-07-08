@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 import sqlite3
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Iterable
 
 
 def init_db(path: str | Path | None = None) -> sqlite3.Connection:
@@ -59,4 +59,19 @@ def save_reading(
             "VALUES (?, ?, ?, ?)",
             (name, reading, confidence, reason),
         )
+
+
+def save_many_readings(
+    rows: Iterable[tuple[str, str, int, str]], conn: sqlite3.Connection
+) -> None:
+    """Insert multiple readings in a single transaction."""
+    items = list(rows)
+    if not items:
+        return
+    with conn:
+        conn.executemany(
+            "INSERT OR REPLACE INTO readings (name, reading, confidence, reason) VALUES (?, ?, ?, ?)",
+            items,
+        )
+
 
