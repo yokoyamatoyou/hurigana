@@ -19,6 +19,9 @@ def process_dataframe(
 ) -> pd.DataFrame:
     """Process DataFrame rows in batches and append confidence columns.
 
+    Duplicate names are consolidated globally so the GPT API is called only
+    once per unique value, mirroring ``async_process_dataframe``.
+
     Parameters
     ----------
     df : pd.DataFrame
@@ -34,56 +37,64 @@ def process_dataframe(
     batch_size : int, default 50
         Number of rows processed per batch.
     """
-    confs: list[int] = []
-    reasons: list[str] = []
+    confs: list[int | None] = [None] * len(df)
+    reasons: list[str | None] = [None] * len(df)
 
     total = len(df)
     processed = 0
-    for start in range(0, total, batch_size):
-        batch = df.iloc[start:start + batch_size]
-        for _, row in batch.iterrows():
-            name_val = row[name_col]
-            name = "" if pd.isna(name_val) else str(name_val)
-            if not name or len(name) > 50:
-                confs.append(0)
-                reasons.append("長すぎる")
-                processed += 1
-                if on_progress:
-                    on_progress(processed, total)
-                continue
-            reading_val = row[furi_col] if furi_col in df.columns else ""
-            reading = "" if pd.isna(reading_val) else str(reading_val)
+    pending: dict[str, list[tuple[int, str]]] = {}
 
-            if db_conn:
-                cached = db.get_reading(name, reading, db_conn)
-                if cached:
-                    confs.append(cached[0])
-                    reasons.append(cached[1])
-                    processed += 1
-                    if on_progress:
-                        on_progress(processed, total)
-                    continue
-            sudachi_kana = parser.sudachi_reading(name)
-            if sudachi_kana and sudachi_kana == reading:
-                confs.append(95)
-                reasons.append("辞書候補1位一致")
-                processed += 1
-                if on_progress:
-                    on_progress(processed, total)
-                continue
+    # first pass: handle cached/sudachi results and gather GPT targets
+    for idx, row in df.iterrows():
+        name_val = row[name_col]
+        name = "" if pd.isna(name_val) else str(name_val)
+        reading_val = row[furi_col] if furi_col in df.columns else ""
+        reading = "" if pd.isna(reading_val) else str(reading_val)
 
-            try:
-                candidates = scorer.gpt_candidates(name)
-            except Exception:
-                candidates = []
-            conf, reason = scorer.calc_confidence(reading, candidates)
-            confs.append(conf)
-            reasons.append(reason)
-            if db_conn:
-                db.save_reading(name, reading, conf, reason, db_conn)
+        if not name or len(name) > 50:
+            confs[idx] = 0
+            reasons[idx] = "長すぎる"
             processed += 1
             if on_progress:
                 on_progress(processed, total)
+            continue
+
+        if db_conn:
+            cached = db.get_reading(name, reading, db_conn)
+            if cached:
+                confs[idx] = cached[0]
+                reasons[idx] = cached[1]
+                processed += 1
+                if on_progress:
+                    on_progress(processed, total)
+                continue
+
+        sudachi_kana = parser.sudachi_reading(name)
+        if sudachi_kana and sudachi_kana == reading:
+            confs[idx] = 95
+            reasons[idx] = "辞書候補1位一致"
+            processed += 1
+            if on_progress:
+                on_progress(processed, total)
+            continue
+
+        pending.setdefault(name, []).append((idx, reading))
+
+    if pending:
+        names = list(pending)
+        for start in range(0, len(names), batch_size):
+            chunk = names[start:start + batch_size]
+            results = [scorer.gpt_candidates(n) for n in chunk]
+            for name, cands in zip(chunk, results):
+                for idx, reading in pending[name]:
+                    conf, reason = scorer.calc_confidence(reading, cands)
+                    confs[idx] = conf
+                    reasons[idx] = reason
+                    if db_conn:
+                        db.save_reading(name, reading, conf, reason, db_conn)
+                    processed += 1
+                    if on_progress:
+                        on_progress(processed, total)
 
     df = df.copy()
     df["信頼度"] = confs

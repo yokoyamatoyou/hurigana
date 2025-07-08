@@ -29,7 +29,8 @@ export FURIGANA_DB="/path/to/cache.db"
 ```
 
 The ``process_dataframe`` helper accepts an optional ``batch_size`` argument
-to control how many rows are processed at once (default ``50``).
+to control how many rows are processed at once (default ``50``). Duplicate
+names are consolidated globally before querying the GPT API.
 
 ## Usage
 
@@ -42,9 +43,9 @@ streamlit run app.py
 
 Upload an Excel file, select the name and furigana columns, and download the result with confidence scores.
 
-The library now also exposes ``async_process_dataframe`` for asynchronous
-processing with limited concurrency. Duplicate names are consolidated so GPT is
-called only once per unique value, further reducing runtime on large inputs.
+Both ``process_dataframe`` and ``async_process_dataframe`` now consolidate
+duplicate names so the GPT API is invoked only once per unique value. The async
+variant additionally allows limited concurrency for further speedups.
 
 For details on the async implementation and tuning options, see
 [docs/performance_plan.md](docs/performance_plan.md).
