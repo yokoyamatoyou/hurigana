@@ -86,16 +86,19 @@ def process_dataframe(
         for start in range(0, len(names), batch_size):
             chunk = names[start:start + batch_size]
             results = [scorer.gpt_candidates(n) for n in chunk]
+            rows_to_save = []
             for name, cands in zip(chunk, results):
                 for idx, reading in pending[name]:
                     conf, reason = scorer.calc_confidence(reading, cands)
                     confs[idx] = conf
                     reasons[idx] = reason
                     if db_conn:
-                        db.save_reading(name, reading, conf, reason, db_conn)
+                        rows_to_save.append((name, reading, conf, reason))
                     processed += 1
                     if on_progress:
                         on_progress(processed, total)
+            if db_conn and rows_to_save:
+                db.save_many_readings(rows_to_save, db_conn)
 
     df = df.copy()
     df["信頼度"] = confs
@@ -176,6 +179,7 @@ async def async_process_dataframe(
             chunk = names[start:start + batch_size]
             tasks = [fetch_candidates(n) for n in chunk]
             name_to_cands = {}
+            rows_to_save = []
 
             for coro in asyncio.as_completed(tasks):
                 name, candidates = await coro
@@ -185,10 +189,12 @@ async def async_process_dataframe(
                     confs[idx] = conf
                     reasons[idx] = reason
                     if db_conn:
-                        db.save_reading(name, reading, conf, reason, db_conn)
+                        rows_to_save.append((name, reading, conf, reason))
                     processed += 1
                     if on_progress:
                         on_progress(processed, total)
+            if db_conn and rows_to_save:
+                db.save_many_readings(rows_to_save, db_conn)
 
     df = df.copy()
     df["信頼度"] = confs

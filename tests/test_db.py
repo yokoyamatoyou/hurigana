@@ -11,6 +11,17 @@ def test_db_round_trip(tmp_path):
     assert db.get_reading('太郎', 'タロウ', conn) == (90, 'cached')
 
 
+def test_save_many_readings(tmp_path):
+    conn = db.init_db(tmp_path / 'many.db')
+    rows = [
+        ('太郎', 'タロウ', 80, 'r1'),
+        ('花子', 'ハナコ', 85, 'r2'),
+    ]
+    db.save_many_readings(rows, conn)
+    assert db.get_reading('太郎', 'タロウ', conn) == (80, 'r1')
+    assert db.get_reading('花子', 'ハナコ', conn) == (85, 'r2')
+
+
 def test_init_db_uses_env_var(tmp_path, monkeypatch):
     path = tmp_path / 'sub' / 'c.db'
     monkeypatch.setenv('FURIGANA_DB', str(path))
