@@ -44,11 +44,12 @@ def process_dataframe(
     processed = 0
     pending: dict[str, list[tuple[int, str]]] = {}
 
+    has_furi = furi_col in df.columns
+    readings = df[furi_col] if has_furi else ["" for _ in range(len(df))]
+
     # first pass: handle cached/sudachi results and gather GPT targets
-    for idx, row in df.iterrows():
-        name_val = row[name_col]
+    for idx, (name_val, reading_val) in enumerate(zip(df[name_col], readings)):
         name = "" if pd.isna(name_val) else str(name_val)
-        reading_val = row[furi_col] if furi_col in df.columns else ""
         reading = "" if pd.isna(reading_val) else str(reading_val)
 
         if not name or len(name) > 50:
@@ -132,11 +133,12 @@ async def async_process_dataframe(
 
     pending: dict[str, list[tuple[int, str]]] = {}
 
+    has_furi = furi_col in df.columns
+    readings = df[furi_col] if has_furi else ["" for _ in range(len(df))]
+
     # first pass: handle cached/sudachi results and collect GPT targets
-    for idx, row in df.iterrows():
-        name_val = row[name_col]
+    for idx, (name_val, reading_val) in enumerate(zip(df[name_col], readings)):
         name = "" if pd.isna(name_val) else str(name_val)
-        reading_val = row[furi_col] if furi_col in df.columns else ""
         reading = "" if pd.isna(reading_val) else str(reading_val)
 
         if not name or len(name) > 50:
