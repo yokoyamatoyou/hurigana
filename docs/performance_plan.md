@@ -23,6 +23,7 @@ call is executed sequentially and any retry delay is accumulated.
    - Use `asyncio.gather` with a semaphore (e.g. max 10 tasks) so only a limited
      number of requests run at once.
    - Keep the existing batch logic to control memory usage.
+   - Deduplicate names so GPT is queried once per unique value.
 
 3. **Preserve caching**
    - Reuse the existing SQLite cache and LRU cache so previously processed names
