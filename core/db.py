@@ -19,6 +19,7 @@ def init_db(path: str | Path | None = None) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     with conn:
+        conn.execute("PRAGMA journal_mode=WAL")
         conn.execute(
             "CREATE TABLE IF NOT EXISTS readings ("
             "name TEXT NOT NULL,"
@@ -27,6 +28,9 @@ def init_db(path: str | Path | None = None) -> sqlite3.Connection:
             "reason TEXT NOT NULL,"
             "PRIMARY KEY(name, reading)"
             ")"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_readings_name_reading ON readings(name, reading)"
         )
     return conn
 
