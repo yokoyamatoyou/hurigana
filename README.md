@@ -34,6 +34,8 @@ The script simply calls ``streamlit run app.py``.
 The ``process_dataframe`` helper accepts an optional ``batch_size`` argument
 to control how many rows are processed at once (default ``50``). Duplicate
 names are consolidated globally before querying the GPT API.
+Pass ``verbose=True`` to either helper to print progress to the console when no
+custom ``on_progress`` callback is supplied.
 
 ## Usage
 

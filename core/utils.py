@@ -16,6 +16,7 @@ def process_dataframe(
     on_progress: Optional[Callable[[int, int], None]] = None,
     db_conn: sqlite3.Connection | None = None,
     batch_size: int = 50,
+    verbose: bool = False,
 ) -> pd.DataFrame:
     """Process DataFrame rows in batches and append confidence columns.
 
@@ -36,9 +37,17 @@ def process_dataframe(
         Optional database connection for caching.
     batch_size : int, default 50
         Number of rows processed per batch.
+    verbose : bool, default False
+        If True, print progress to the console when ``on_progress`` is not
+        provided.
     """
     confs: list[int | None] = [None] * len(df)
     reasons: list[str | None] = [None] * len(df)
+
+    progress_cb = on_progress
+    if verbose and progress_cb is None:
+        def progress_cb(done: int, total: int) -> None:
+            print(f"{done}/{total} processed", flush=True)
 
     total = len(df)
     processed = 0
@@ -56,8 +65,8 @@ def process_dataframe(
             confs[idx] = 0
             reasons[idx] = "長すぎる"
             processed += 1
-            if on_progress:
-                on_progress(processed, total)
+            if progress_cb:
+                progress_cb(processed, total)
             continue
 
         if db_conn:
@@ -66,8 +75,8 @@ def process_dataframe(
                 confs[idx] = cached[0]
                 reasons[idx] = cached[1]
                 processed += 1
-                if on_progress:
-                    on_progress(processed, total)
+                if progress_cb:
+                    progress_cb(processed, total)
                 continue
 
         sudachi_kana = parser.sudachi_reading(name)
@@ -75,8 +84,8 @@ def process_dataframe(
             confs[idx] = 95
             reasons[idx] = "辞書候補1位一致"
             processed += 1
-            if on_progress:
-                on_progress(processed, total)
+            if progress_cb:
+                progress_cb(processed, total)
             continue
 
         pending.setdefault(name, []).append((idx, reading))
@@ -95,8 +104,8 @@ def process_dataframe(
                     if db_conn:
                         rows_to_save.append((name, reading, conf, reason))
                     processed += 1
-                    if on_progress:
-                        on_progress(processed, total)
+                    if progress_cb:
+                        progress_cb(processed, total)
             if db_conn and rows_to_save:
                 db.save_many_readings(rows_to_save, db_conn)
 
@@ -114,17 +123,29 @@ async def async_process_dataframe(
     db_conn: sqlite3.Connection | None = None,
     batch_size: int = 50,
     concurrency: int = 10,
+    verbose: bool = False,
 ) -> pd.DataFrame:
     """Asynchronous version of ``process_dataframe`` with limited concurrency.
 
     Names are deduplicated globally so GPT is called only once per unique name,
     greatly reducing runtime when many duplicates exist.
+    
+    Parameters
+    ----------
+    verbose : bool, default False
+        If True, print progress to the console when ``on_progress`` is not
+        provided.
     """
     confs: list[int | None] = [None] * len(df)
     reasons: list[str | None] = [None] * len(df)
     total = len(df)
     processed = 0
     sem = Semaphore(concurrency)
+
+    progress_cb = on_progress
+    if verbose and progress_cb is None:
+        def progress_cb(done: int, total: int) -> None:
+            print(f"{done}/{total} processed", flush=True)
 
     async def fetch_candidates(name: str) -> tuple[str, list[str]]:
         async with sem:
@@ -148,8 +169,8 @@ async def async_process_dataframe(
             confs[idx] = 0
             reasons[idx] = "長すぎる"
             processed += 1
-            if on_progress:
-                on_progress(processed, total)
+            if progress_cb:
+                progress_cb(processed, total)
             continue
 
         if db_conn:
@@ -158,8 +179,8 @@ async def async_process_dataframe(
                 confs[idx] = cached[0]
                 reasons[idx] = cached[1]
                 processed += 1
-                if on_progress:
-                    on_progress(processed, total)
+                if progress_cb:
+                    progress_cb(processed, total)
                 continue
 
         sudachi_kana = parser.sudachi_reading(name)
@@ -167,8 +188,8 @@ async def async_process_dataframe(
             confs[idx] = 95
             reasons[idx] = "辞書候補1位一致"
             processed += 1
-            if on_progress:
-                on_progress(processed, total)
+            if progress_cb:
+                progress_cb(processed, total)
             continue
 
         pending.setdefault(name, []).append((idx, reading))
@@ -191,8 +212,8 @@ async def async_process_dataframe(
                     if db_conn:
                         rows_to_save.append((name, reading, conf, reason))
                     processed += 1
-                    if on_progress:
-                        on_progress(processed, total)
+                    if progress_cb:
+                        progress_cb(processed, total)
             if db_conn and rows_to_save:
                 db.save_many_readings(rows_to_save, db_conn)
 
