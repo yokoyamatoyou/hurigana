@@ -1,6 +1,7 @@
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 import types
 import openai
+import asyncio
 
 from core import scorer
 
@@ -70,4 +71,24 @@ def test_default_model_when_env_missing(monkeypatch):
     import importlib
     mod = importlib.reload(scorer)
     assert mod.DEFAULT_MODEL == "gpt-4o-mini"
+
+
+def test_async_gpt_candidates():
+    resp1 = types.SimpleNamespace(
+        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
+    )
+    resp2 = types.SimpleNamespace(
+        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
+    )
+
+    async def run_test():
+        with patch(
+            "core.scorer._acall_with_backoff",
+            new=AsyncMock(side_effect=[resp1, resp2]),
+        ) as mock_call:
+            result = await scorer.async_gpt_candidates("太郎")
+        assert result == ["カナ"]
+        assert mock_call.call_count == 2
+
+    asyncio.run(run_test())
 

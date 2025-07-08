@@ -3,7 +3,8 @@ import pandas as pd
 from io import BytesIO
 from . import parser, scorer, db
 import sqlite3
-
+import asyncio
+from asyncio import Semaphore
 
 from typing import Callable, Optional
 
@@ -83,6 +84,80 @@ def process_dataframe(
             processed += 1
             if on_progress:
                 on_progress(processed, total)
+
+    df = df.copy()
+    df["信頼度"] = confs
+    df["理由"] = reasons
+    return df
+
+
+async def async_process_dataframe(
+    df: pd.DataFrame,
+    name_col: str,
+    furi_col: str,
+    on_progress: Optional[Callable[[int, int], None]] = None,
+    db_conn: sqlite3.Connection | None = None,
+    batch_size: int = 50,
+    concurrency: int = 10,
+) -> pd.DataFrame:
+    """Asynchronous version of ``process_dataframe`` with limited concurrency."""
+    confs: list[int | None] = [None] * len(df)
+    reasons: list[str | None] = [None] * len(df)
+    total = len(df)
+    processed = 0
+    sem = Semaphore(concurrency)
+
+    async def handle_row(idx: int, row: pd.Series) -> None:
+        nonlocal processed
+        name_val = row[name_col]
+        name = "" if pd.isna(name_val) else str(name_val)
+        if not name or len(name) > 50:
+            confs[idx] = 0
+            reasons[idx] = "長すぎる"
+            processed += 1
+            if on_progress:
+                on_progress(processed, total)
+            return
+        reading_val = row[furi_col] if furi_col in df.columns else ""
+        reading = "" if pd.isna(reading_val) else str(reading_val)
+
+        if db_conn:
+            cached = db.get_reading(name, reading, db_conn)
+            if cached:
+                confs[idx] = cached[0]
+                reasons[idx] = cached[1]
+                processed += 1
+                if on_progress:
+                    on_progress(processed, total)
+                return
+
+        sudachi_kana = parser.sudachi_reading(name)
+        if sudachi_kana and sudachi_kana == reading:
+            confs[idx] = 95
+            reasons[idx] = "辞書候補1位一致"
+            processed += 1
+            if on_progress:
+                on_progress(processed, total)
+            return
+
+        try:
+            async with sem:
+                candidates = await scorer.async_gpt_candidates(name)
+        except Exception:
+            candidates = []
+        conf, reason = scorer.calc_confidence(reading, candidates)
+        confs[idx] = conf
+        reasons[idx] = reason
+        if db_conn:
+            db.save_reading(name, reading, conf, reason, db_conn)
+        processed += 1
+        if on_progress:
+            on_progress(processed, total)
+
+    for start in range(0, total, batch_size):
+        batch = df.iloc[start:start + batch_size]
+        tasks = [handle_row(idx, row) for idx, row in batch.iterrows()]
+        await asyncio.gather(*tasks)
 
     df = df.copy()
     df["信頼度"] = confs
