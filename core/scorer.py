@@ -12,8 +12,8 @@ client = openai.OpenAI()
 async_client = openai.AsyncOpenAI()
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-# simple regex for the first katakana sequence (including spaces, long dash and digits)
-_KANA_RE = re.compile(r"[\u30A0-\u30FF\u30FC0-9\s]+")
+# regex for the first katakana sequence; also accepts half/full-width digits
+_KANA_RE = re.compile(r"[\u30A0-\u30FF\u30FC0-9\uFF10-\uFF19\s]+")
 
 
 def _clean_reading(text: str) -> str:
