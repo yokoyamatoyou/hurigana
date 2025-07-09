@@ -44,7 +44,8 @@ def gpt_candidates(name: str) -> List[str]:
         model=DEFAULT_MODEL,
         messages=[{"role": "user", "content": prompt1}],
         temperature=0.0,
-        logprobs=5,
+        logprobs=True,
+        top_logprobs=5,
         n=1,
     )
     top = res1.choices[0].message.content.strip()
@@ -81,7 +82,8 @@ async def async_gpt_candidates(name: str) -> List[str]:
             model=DEFAULT_MODEL,
             messages=[{"role": "user", "content": prompt1}],
             temperature=0.0,
-            logprobs=5,
+            logprobs=True,
+            top_logprobs=5,
             n=1,
         ),
         _acall_with_backoff(
