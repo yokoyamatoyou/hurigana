@@ -4,12 +4,24 @@ from .normalize import normalize_kana
 import time
 import os
 import asyncio
+import re
 import openai
 from functools import lru_cache
 
 client = openai.OpenAI()
 async_client = openai.AsyncOpenAI()
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+# simple regex for the first katakana sequence (including spaces, long dash and digits)
+_KANA_RE = re.compile(r"[\u30A0-\u30FF\u30FC0-9\s]+")
+
+
+def _clean_reading(text: str) -> str:
+    """Return normalized candidate reading from GPT output."""
+    m = _KANA_RE.search(text)
+    if m:
+        text = m.group(0)
+    return normalize_kana(text)
 
 
 def _call_with_backoff(**kwargs):
@@ -63,9 +75,10 @@ def gpt_candidates(name: str) -> List[str]:
     cand: List[str] = []
     seen = set()
     for c in low + high:
-        if c not in seen:
-            seen.add(c)
-            cand.append(c)
+        norm = _clean_reading(c)
+        if norm not in seen:
+            seen.add(norm)
+            cand.append(norm)
         if len(cand) >= 10:
             break
     return cand
@@ -97,17 +110,16 @@ async def async_gpt_candidates(name: str) -> List[str]:
     cand: List[str] = []
     seen = set()
     for c in low + high:
-        if c not in seen:
-            seen.add(c)
-            cand.append(c)
+        norm = _clean_reading(c)
+        if norm not in seen:
+            seen.add(norm)
+            cand.append(norm)
         if len(cand) >= 10:
             break
     return cand
 
 
-def calc_confidence(
-    row_reading: str, candidates: List[str]
-) -> tuple[int, str]:
+def calc_confidence(row_reading: str, candidates: List[str]) -> tuple[int, str]:
     """Return confidence percentage and short reason."""
     target = normalize_kana(row_reading)
     for idx, reading in enumerate(candidates, start=1):
