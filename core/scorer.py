@@ -38,43 +38,41 @@ async def _acall_with_backoff(**kwargs):
 
 @lru_cache(maxsize=128)
 def gpt_candidates(name: str) -> List[str]:
-    """Return candidate readings for a name using two-phase GPT calls."""
-    # phase 1: deterministic top reading
+    """Return candidate readings using a broader two-phase GPT strategy."""
+    # phase 1: deterministic top 3 readings
     prompt1 = f"{name} の読みをカタカナで1つだけ答えて"
     res1 = _call_with_backoff(
         model=DEFAULT_MODEL,
         messages=[{"role": "user", "content": prompt1}],
         temperature=0.0,
-        logprobs=True,
-        top_logprobs=5,
-        n=1,
+        n=3,
     )
-    top = res1.choices[0].message.content.strip()
+    low = [c.message.content.strip() for c in res1.choices]
 
-    # phase 2: up to 5 candidates
+    # phase 2: 7 additional candidates
     prompt2 = f"{name} の読みをカタカナで答えて"
     res2 = _call_with_backoff(
         model=DEFAULT_MODEL,
         messages=[{"role": "user", "content": prompt2}],
         temperature=0.7,
         top_p=1.0,
-        n=5,
+        n=7,
     )
-    cand = [c.message.content.strip() for c in res2.choices]
-    if top not in cand:
-        cand.insert(0, top)
-    # deduplicate while preserving order
+    high = [c.message.content.strip() for c in res2.choices]
+
+    cand: List[str] = []
     seen = set()
-    uniq: List[str] = []
-    for c in cand:
+    for c in low + high:
         if c not in seen:
             seen.add(c)
-            uniq.append(c)
-    return uniq[:5]
+            cand.append(c)
+        if len(cand) >= 10:
+            break
+    return cand
 
 
 async def async_gpt_candidates(name: str) -> List[str]:
-    """Async version of ``gpt_candidates`` that runs both phases in parallel."""
+    """Async version of ``gpt_candidates`` using the broader search."""
     prompt1 = f"{name} の読みをカタカナで1つだけ答えて"
     prompt2 = f"{name} の読みをカタカナで答えて"
 
@@ -83,29 +81,28 @@ async def async_gpt_candidates(name: str) -> List[str]:
             model=DEFAULT_MODEL,
             messages=[{"role": "user", "content": prompt1}],
             temperature=0.0,
-            logprobs=True,
-            top_logprobs=5,
-            n=1,
+            n=3,
         ),
         _acall_with_backoff(
             model=DEFAULT_MODEL,
             messages=[{"role": "user", "content": prompt2}],
             temperature=0.7,
             top_p=1.0,
-            n=5,
+            n=7,
         ),
     )
-    top = res1.choices[0].message.content.strip()
-    cand = [c.message.content.strip() for c in res2.choices]
-    if top not in cand:
-        cand.insert(0, top)
+    low = [c.message.content.strip() for c in res1.choices]
+    high = [c.message.content.strip() for c in res2.choices]
+
+    cand: List[str] = []
     seen = set()
-    uniq: List[str] = []
-    for c in cand:
+    for c in low + high:
         if c not in seen:
             seen.add(c)
-            uniq.append(c)
-    return uniq[:5]
+            cand.append(c)
+        if len(cand) >= 10:
+            break
+    return cand
 
 
 def calc_confidence(
@@ -119,6 +116,8 @@ def calc_confidence(
                 return 85, "候補1位一致"
             elif idx <= 3:
                 return 70, "3位内一致"
+            elif idx <= 10:
+                return 60, "10位内一致"
             else:
-                return 60, "5位内一致"
+                break
     return 30, "候補外･要確認"
