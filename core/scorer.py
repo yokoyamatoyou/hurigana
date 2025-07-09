@@ -13,14 +13,18 @@ async_client = openai.AsyncOpenAI()
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 # regex for the first katakana sequence; also accepts half/full-width digits
-_KANA_RE = re.compile(r"[\u30A0-\u30FF\u30FC0-9\uFF10-\uFF19\s]+")
+# match contiguous katakana or full/half width digits
+_KANA_RE = re.compile(r"[\u30A0-\u30FF\u30FC0-9\uFF10-\uFF19]+")
 
 
 def _clean_reading(text: str) -> str:
     """Return normalized candidate reading from GPT output."""
-    m = _KANA_RE.search(text)
-    if m:
-        text = m.group(0)
+    text = text.lstrip()
+    parts = _KANA_RE.findall(text)
+    if parts:
+        text = "".join(parts)
+    else:
+        text = text.replace(" ", "").replace("　", "")
     return normalize_kana(text)
 
 
