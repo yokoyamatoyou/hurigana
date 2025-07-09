@@ -55,8 +55,8 @@ produce consistent results:
 
 Unknown names are sent to GPT-4o mini three times with increasing temperatures.
 The first request uses ``temperature=0.0`` and returns three candidates.
-The second uses ``temperature=2.0`` to get five more. A final call at
-``temperature=5.0`` provides another five. Duplicate readings are removed
+The second uses ``temperature=0.2`` to get five more. A final call at
+``temperature=0.5`` provides another five. Duplicate readings are removed
 before scoring.
 
 ## Usage
