@@ -29,3 +29,8 @@ def test_sudachi_reading_cached():
     assert first == "タロウ"
     assert second == "タロウ"
     assert mock_tok.tokenize.call_count == 1
+
+
+def test_sudachi_reading_ignores_spaces():
+    # Sudachi should skip space tokens rather than output "キゴウ"
+    assert parser.sudachi_reading("野々村　美枝子") == "ノノムラミエコ"

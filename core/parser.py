@@ -13,6 +13,7 @@ def sudachi_reading(name: str) -> str | None:
     if not name:
         return None
     morps = TOKENIZER.tokenize(name, MODE)
-    if not morps:
+    filtered = [m for m in morps if m.part_of_speech()[0] != "空白"]
+    if not filtered:
         return None
-    return "".join(m.reading_form() for m in morps) or None
+    return "".join(m.reading_form() for m in filtered) or None
