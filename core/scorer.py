@@ -50,71 +50,58 @@ async def _acall_with_backoff(**kwargs):
 
 @lru_cache(maxsize=128)
 def gpt_candidates(name: str) -> List[str]:
-    """Return candidate readings using a broader two-phase GPT strategy."""
-    # phase 1: deterministic top 3 readings
-    prompt1 = f"{name} の読みをカタカナで1つだけ答えて"
-    res1 = _call_with_backoff(
-        model=DEFAULT_MODEL,
-        messages=[{"role": "user", "content": prompt1}],
-        temperature=0.0,
-        n=3,
-    )
-    low = [c.message.content.strip() for c in res1.choices]
-
-    # phase 2: 7 additional candidates
-    prompt2 = f"{name} の読みをカタカナで答えて"
-    res2 = _call_with_backoff(
-        model=DEFAULT_MODEL,
-        messages=[{"role": "user", "content": prompt2}],
-        temperature=0.7,
-        top_p=1.0,
-        n=7,
-    )
-    high = [c.message.content.strip() for c in res2.choices]
+    """Return candidate readings using multi-temperature prompts."""
+    prompt = f"{name} の読みをカタカナで答えて"
+    configs = [(0.0, 3), (2.0, 5), (5.0, 5)]
 
     cand: List[str] = []
     seen = set()
-    for c in low + high:
-        norm = _clean_reading(c)
-        if norm not in seen:
-            seen.add(norm)
-            cand.append(norm)
-        if len(cand) >= 10:
+    for temp, n in configs:
+        res = _call_with_backoff(
+            model=DEFAULT_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temp,
+            n=n,
+        )
+        for c in res.choices:
+            norm = _clean_reading(c.message.content.strip())
+            if norm not in seen:
+                seen.add(norm)
+                cand.append(norm)
+            if len(cand) >= 13:
+                break
+        if len(cand) >= 13:
             break
     return cand
 
 
 async def async_gpt_candidates(name: str) -> List[str]:
-    """Async version of ``gpt_candidates`` using the broader search."""
-    prompt1 = f"{name} の読みをカタカナで1つだけ答えて"
-    prompt2 = f"{name} の読みをカタカナで答えて"
+    """Async version of ``gpt_candidates`` using multiple temperatures."""
+    prompt = f"{name} の読みをカタカナで答えて"
+    configs = [(0.0, 3), (2.0, 5), (5.0, 5)]
 
-    res1, res2 = await asyncio.gather(
+    tasks = [
         _acall_with_backoff(
             model=DEFAULT_MODEL,
-            messages=[{"role": "user", "content": prompt1}],
-            temperature=0.0,
-            n=3,
-        ),
-        _acall_with_backoff(
-            model=DEFAULT_MODEL,
-            messages=[{"role": "user", "content": prompt2}],
-            temperature=0.7,
-            top_p=1.0,
-            n=7,
-        ),
-    )
-    low = [c.message.content.strip() for c in res1.choices]
-    high = [c.message.content.strip() for c in res2.choices]
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temp,
+            n=n,
+        )
+        for temp, n in configs
+    ]
+    results = await asyncio.gather(*tasks)
 
     cand: List[str] = []
     seen = set()
-    for c in low + high:
-        norm = _clean_reading(c)
-        if norm not in seen:
-            seen.add(norm)
-            cand.append(norm)
-        if len(cand) >= 10:
+    for res in results:
+        for c in res.choices:
+            norm = _clean_reading(c.message.content.strip())
+            if norm not in seen:
+                seen.add(norm)
+                cand.append(norm)
+            if len(cand) >= 13:
+                break
+        if len(cand) >= 13:
             break
     return cand
 

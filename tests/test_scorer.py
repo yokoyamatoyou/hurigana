@@ -39,10 +39,16 @@ def test_gpt_candidates_caches_result():
     resp2 = types.SimpleNamespace(
         choices=[
             types.SimpleNamespace(message=types.SimpleNamespace(content="カナ4"))
-            for _ in range(7)
+            for _ in range(5)
         ]
     )
-    responses = [resp1, resp2]
+    resp3 = types.SimpleNamespace(
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ5"))
+            for _ in range(5)
+        ]
+    )
+    responses = [resp1, resp2, resp3]
 
     def side_effect(**kwargs):
         return responses.pop(0)
@@ -51,9 +57,9 @@ def test_gpt_candidates_caches_result():
         first = scorer.gpt_candidates("太郎")
         second = scorer.gpt_candidates("太郎")
 
-    assert first == ["カナ1", "カナ2", "カナ3", "カナ4"]
-    assert second == ["カナ1", "カナ2", "カナ3", "カナ4"]
-    assert mock_call.call_count == 2
+    assert first == ["カナ1", "カナ2", "カナ3", "カナ4", "カナ5"]
+    assert second == ["カナ1", "カナ2", "カナ3", "カナ4", "カナ5"]
+    assert mock_call.call_count == 3
 
 
 def test_gpt_candidates_uses_env_var(monkeypatch):
@@ -72,11 +78,17 @@ def test_gpt_candidates_uses_env_var(monkeypatch):
     resp2 = types.SimpleNamespace(
         choices=[
             types.SimpleNamespace(message=types.SimpleNamespace(content="カナ4"))
-            for _ in range(7)
+            for _ in range(5)
+        ]
+    )
+    resp3 = types.SimpleNamespace(
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ5"))
+            for _ in range(5)
         ]
     )
     with patch(
-        "core.scorer._call_with_backoff", side_effect=[resp1, resp2]
+        "core.scorer._call_with_backoff", side_effect=[resp1, resp2, resp3]
     ) as mock_call:
         mod.gpt_candidates("太郎")
 
@@ -104,18 +116,24 @@ def test_async_gpt_candidates():
     resp2 = types.SimpleNamespace(
         choices=[
             types.SimpleNamespace(message=types.SimpleNamespace(content="カナ4"))
-            for _ in range(7)
+            for _ in range(5)
+        ]
+    )
+    resp3 = types.SimpleNamespace(
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ5"))
+            for _ in range(5)
         ]
     )
 
     async def run_test():
         with patch(
             "core.scorer._acall_with_backoff",
-            new=AsyncMock(side_effect=[resp1, resp2]),
+            new=AsyncMock(side_effect=[resp1, resp2, resp3]),
         ) as mock_call:
             result = await scorer.async_gpt_candidates("太郎")
-        assert result == ["カナ1", "カナ2", "カナ3", "カナ4"]
-        assert mock_call.call_count == 2
+        assert result == ["カナ1", "カナ2", "カナ3", "カナ4", "カナ5"]
+        assert mock_call.call_count == 3
 
     asyncio.run(run_test())
 
@@ -140,9 +158,6 @@ def test_gpt_candidates_normalizes_duplicates():
             types.SimpleNamespace(
                 message=types.SimpleNamespace(content="ミヤガワアキ")
             ),
-            types.SimpleNamespace(
-                message=types.SimpleNamespace(content="ミヤカワ アキ")
-            ),
             *[
                 types.SimpleNamespace(
                     message=types.SimpleNamespace(content="ミヤガワ アキ")
@@ -151,7 +166,20 @@ def test_gpt_candidates_normalizes_duplicates():
             ],
         ]
     )
-    with patch("core.scorer._call_with_backoff", side_effect=[resp1, resp2]):
+    resp3 = types.SimpleNamespace(
+        choices=[
+            types.SimpleNamespace(
+                message=types.SimpleNamespace(content="ミヤカワ アキ")
+            ),
+            *[
+                types.SimpleNamespace(
+                    message=types.SimpleNamespace(content="ミヤガワ アキ")
+                )
+                for _ in range(4)
+            ],
+        ]
+    )
+    with patch("core.scorer._call_with_backoff", side_effect=[resp1, resp2, resp3]):
         result = scorer.gpt_candidates("宮川亜紀")
 
     assert result == ["ミヤガワアキ", "ミヤカワアキ"]
