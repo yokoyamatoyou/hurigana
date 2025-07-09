@@ -52,7 +52,7 @@ async def _acall_with_backoff(**kwargs):
 def gpt_candidates(name: str) -> List[str]:
     """Return candidate readings using multi-temperature prompts."""
     prompt = f"{name} の読みをカタカナで答えて"
-    configs = [(0.0, 3), (2.0, 5), (5.0, 5)]
+    configs = [(0.2, 3), (0.5, 5)]
 
     cand: List[str] = []
     seen = set()
@@ -78,7 +78,7 @@ def gpt_candidates(name: str) -> List[str]:
 async def async_gpt_candidates(name: str) -> List[str]:
     """Async version of ``gpt_candidates`` using multiple temperatures."""
     prompt = f"{name} の読みをカタカナで答えて"
-    configs = [(0.0, 3), (2.0, 5), (5.0, 5)]
+    configs = [(0.2, 3), (0.5, 5)]
 
     tasks = [
         _acall_with_backoff(

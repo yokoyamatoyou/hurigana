@@ -51,6 +51,13 @@ produce consistent results:
    character ``ﾀﾞ`` or the base character ``ﾀ`` followed by ``ﾞ``.
 3. Characters like ``ヲ`` and ``ー`` are entered as is without conversion.
 
+### Candidate Generation
+
+Unknown names are sent to GPT-4o mini twice with different temperatures. The
+first request uses ``temperature=0.2`` and returns three candidates. The second
+uses ``temperature=0.5`` and returns five more. Duplicate readings are removed
+before scoring.
+
 ## Usage
 
 Run the app locally. The Streamlit interface now leverages the asynchronous
