@@ -30,10 +30,17 @@ def test_call_with_backoff_retries_api_connection_error():
 def test_gpt_candidates_caches_result():
     scorer.gpt_candidates.cache_clear()
     resp1 = types.SimpleNamespace(
-        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ1")),
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ2")),
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ3")),
+        ]
     )
     resp2 = types.SimpleNamespace(
-        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ4"))
+            for _ in range(7)
+        ]
     )
     responses = [resp1, resp2]
 
@@ -44,8 +51,8 @@ def test_gpt_candidates_caches_result():
         first = scorer.gpt_candidates("太郎")
         second = scorer.gpt_candidates("太郎")
 
-    assert first == ["カナ"]
-    assert second == ["カナ"]
+    assert first == ["カナ1", "カナ2", "カナ3", "カナ4"]
+    assert second == ["カナ1", "カナ2", "カナ3", "カナ4"]
     assert mock_call.call_count == 2
 
 
@@ -55,10 +62,17 @@ def test_gpt_candidates_uses_env_var(monkeypatch):
     mod = importlib.reload(scorer)
     mod.gpt_candidates.cache_clear()
     resp1 = types.SimpleNamespace(
-        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ1")),
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ2")),
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ3")),
+        ]
     )
     resp2 = types.SimpleNamespace(
-        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ4"))
+            for _ in range(7)
+        ]
     )
     with patch("core.scorer._call_with_backoff", side_effect=[resp1, resp2]) as mock_call:
         mod.gpt_candidates("太郎")
@@ -75,10 +89,17 @@ def test_default_model_when_env_missing(monkeypatch):
 
 def test_async_gpt_candidates():
     resp1 = types.SimpleNamespace(
-        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ1")),
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ2")),
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ3")),
+        ]
     )
     resp2 = types.SimpleNamespace(
-        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="カナ"))]
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ4"))
+            for _ in range(7)
+        ]
     )
 
     async def run_test():
@@ -87,7 +108,7 @@ def test_async_gpt_candidates():
             new=AsyncMock(side_effect=[resp1, resp2]),
         ) as mock_call:
             result = await scorer.async_gpt_candidates("太郎")
-        assert result == ["カナ"]
+        assert result == ["カナ1", "カナ2", "カナ3", "カナ4"]
         assert mock_call.call_count == 2
 
     asyncio.run(run_test())
