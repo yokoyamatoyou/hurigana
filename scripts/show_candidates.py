@@ -39,8 +39,9 @@ async def fetch(name: str):
             temperature=temp,
             n=n,
         )
-        cands = [_clean_reading(c.message.content.strip()) for c in res.choices]
-        steps.append((temp, cands))
+        raw = [c.message.content.strip() for c in res.choices]
+        cands = [_clean_reading(r) for r in raw]
+        steps.append((temp, raw, cands))
         for c in cands:
             if c not in seen:
                 seen.add(c)
@@ -52,7 +53,8 @@ async def main():
         steps, unique = await fetch(name)
         print(f"名前: {name}\n入力フリガナ: {furi}")
         print(f"Sudachi: {parser.sudachi_reading(name)}")
-        for temp, cands in steps:
+        for temp, raw, cands in steps:
+            print(f"temperature {temp} raw: {raw}")
             print(f"temperature {temp}: {', '.join(cands)}")
         print(f"unique candidates: {', '.join(unique)}")
         print('-'*40)
