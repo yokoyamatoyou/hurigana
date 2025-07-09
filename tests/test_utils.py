@@ -23,6 +23,16 @@ def test_process_dataframe_sudachi_match():
     assert mock.call_count == 0
 
 
+def test_process_dataframe_normalizes_reading():
+    df = pd.DataFrame({'名前': ['村中　伸二'], 'フリガナ': ['ﾑﾗﾅｶ ｼﾝｼﾞ']})
+
+    with patch('core.utils.parser.sudachi_reading', return_value='ムラナカシンジ'):
+        out = process_dataframe(df, '名前', 'フリガナ')
+
+    assert out['信頼度'][0] == 95
+    assert out['理由'][0] == '辞書候補1位一致'
+
+
 def test_process_dataframe_long_name():
     long_name = 'あ' * 51
     df = pd.DataFrame({'名前': [long_name], 'フリガナ': ['']})

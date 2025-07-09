@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import List
+from .normalize import normalize_kana
 import time
 import os
 import asyncio
@@ -111,8 +112,9 @@ def calc_confidence(
     row_reading: str, candidates: List[str]
 ) -> tuple[int, str]:
     """Return confidence percentage and short reason."""
+    target = normalize_kana(row_reading)
     for idx, reading in enumerate(candidates, start=1):
-        if row_reading == reading:
+        if target == normalize_kana(reading):
             if idx == 1:
                 return 85, "候補1位一致"
             elif idx <= 3:
