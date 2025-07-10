@@ -66,6 +66,7 @@ def gpt_candidates(name: str) -> List[str]:
             messages=[{"role": "user", "content": prompt}],
             temperature=temp,
             n=n,
+            presence_penalty=1.0,
         )
         for c in res.choices:
             norm = _clean_reading(c.message.content.strip())
@@ -90,6 +91,7 @@ async def async_gpt_candidates(name: str) -> List[str]:
             messages=[{"role": "user", "content": prompt}],
             temperature=temp,
             n=n,
+            presence_penalty=1.0,
         )
         for temp, n in configs
     ]
