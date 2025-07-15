@@ -43,7 +43,7 @@ def process_dataframe(
 
     total = len(df)
     processed = 0
-    pending: dict[str, list[tuple[int, str]]] = {}
+    pending: dict[str, dict[str, list | str | None]] = {}
 
     has_furi = furi_col in df.columns
     readings = df[furi_col] if has_furi else ["" for _ in range(len(df))]
@@ -80,7 +80,8 @@ def process_dataframe(
                 on_progress(processed, total)
             continue
 
-        pending.setdefault(name, []).append((idx, reading))
+        entry = pending.setdefault(name, {"rows": [], "sudachi": sudachi_kana})
+        entry["rows"].append((idx, reading))
 
     if pending:
         names = list(pending)
@@ -89,8 +90,10 @@ def process_dataframe(
             results = [scorer.gpt_candidates(n) for n in chunk]
             rows_to_save = []
             for name, cands in zip(chunk, results):
-                for idx, reading in pending[name]:
-                    conf, reason = scorer.calc_confidence(reading, cands, sudachi_kana)
+                info = pending[name]
+                sudachi = info.get("sudachi")
+                for idx, reading in info["rows"]:
+                    conf, reason = scorer.calc_confidence(reading, cands, sudachi)
                     confs[idx] = conf
                     reasons[idx] = reason
                     if db_conn:
@@ -135,7 +138,7 @@ async def async_process_dataframe(
                 cands = []
         return name, cands
 
-    pending: dict[str, list[tuple[int, str]]] = {}
+    pending: dict[str, dict[str, list | str | None]] = {}
 
     has_furi = furi_col in df.columns
     readings = df[furi_col] if has_furi else ["" for _ in range(len(df))]
@@ -172,7 +175,8 @@ async def async_process_dataframe(
                 on_progress(processed, total)
             continue
 
-        pending.setdefault(name, []).append((idx, reading))
+        entry = pending.setdefault(name, {"rows": [], "sudachi": sudachi_kana})
+        entry["rows"].append((idx, reading))
 
     if pending:
         names = list(pending)
@@ -185,8 +189,10 @@ async def async_process_dataframe(
             for coro in asyncio.as_completed(tasks):
                 name, candidates = await coro
                 name_to_cands[name] = candidates
-                for idx, reading in pending[name]:
-                    conf, reason = scorer.calc_confidence(reading, candidates, sudachi_kana)
+                info = pending[name]
+                sudachi = info.get("sudachi")
+                for idx, reading in info["rows"]:
+                    conf, reason = scorer.calc_confidence(reading, candidates, sudachi)
                     confs[idx] = conf
                     reasons[idx] = reason
                     if db_conn:
