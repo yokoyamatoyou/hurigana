@@ -2,7 +2,7 @@ from __future__ import annotations
 import pandas as pd
 from io import BytesIO
 from . import parser, scorer, db
-from .normalize import normalize_kana
+from .normalize import normalize_kana, normalize_for_keypuncher_check
 import sqlite3
 import asyncio
 from asyncio import Semaphore
@@ -72,7 +72,7 @@ def process_dataframe(
                 continue
 
         sudachi_kana = parser.sudachi_reading(name)
-        if sudachi_kana and normalize_kana(sudachi_kana) == normalize_kana(reading):
+        if sudachi_kana and normalize_for_keypuncher_check(sudachi_kana) == normalize_for_keypuncher_check(reading):
             confs[idx] = 95
             reasons[idx] = "辞書候補1位一致"
             processed += 1
@@ -164,7 +164,7 @@ async def async_process_dataframe(
                 continue
 
         sudachi_kana = parser.sudachi_reading(name)
-        if sudachi_kana and normalize_kana(sudachi_kana) == normalize_kana(reading):
+        if sudachi_kana and normalize_for_keypuncher_check(sudachi_kana) == normalize_for_keypuncher_check(reading):
             confs[idx] = 95
             reasons[idx] = "辞書候補1位一致"
             processed += 1

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List
-from .normalize import normalize_kana
+from .normalize import normalize_kana, normalize_for_keypuncher_check
 import time
 import os
 import asyncio
@@ -114,9 +114,9 @@ async def async_gpt_candidates(name: str) -> List[str]:
 
 def calc_confidence(row_reading: str, candidates: List[str]) -> tuple[int, str]:
     """Return confidence percentage and short reason."""
-    target = normalize_kana(row_reading)
+    target = normalize_for_keypuncher_check(row_reading)
     for idx, reading in enumerate(candidates, start=1):
-        if target == normalize_kana(reading):
+        if target == normalize_for_keypuncher_check(reading):
             if idx == 1:
                 return 85, "候補1位一致"
             elif idx <= 3:
