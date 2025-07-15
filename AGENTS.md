@@ -40,17 +40,16 @@ These guidelines standardize how operators type readings:
 ## Processing Flow
 1. Read Excel file with pandas.
 2. For each name, use SudachiPy with `SudachiDict-full` to get the standard reading. If found, confidence 95% with reason "辞書候補1位一致".
-3. For unknown words, call GPT-4.1 mini in two phases:
-   - Phase 1: `temperature=0.0`, `logprobs=5` to get top reading.
-   - Phase 2: `temperature=0.7`, `top_p=1.0`, `n=5` to get up to five candidates.
-   - This two-phase algorithm is kept as-is for consistent scoring.
+3. For unknown words, call GPT-4.1 mini (knowledge cutoff 2025-04-14) in three steps:
+   - `temperature=0.0` returning three candidates.
+   - `temperature=0.2` returning five candidates.
+   - `temperature=0.5` returning another five.
+   - Deduplicate results and keep at most 13 candidates in total.
 4. Calculate confidence based on candidate ranking and provide a short reason (within 20 characters).
 5. Combine results into DataFrame and export to Excel using `openpyxl` to preserve formatting.
 6. Provide a download button for the processed file.
-7. 上記のアルゴリズムでは不具合発生中、指示内容ではアルゴリズムが目標を達成できません。
-8. 具体的に言うと、宮川　亜紀という名前に対して1パターンの名前 宮川　亜紀     ﾐﾔｶﾜ ｱｷ   がフリガナとして登録されており、結果は候補外･要確認です。
-しかし名前の候補は   [ミヤガワアキ, ]のみで複数パターンが推論されていません。
-アルゴリズムを変更して、上位ｎ件を一回のプロンプトで温度0で3件、温度0.2で5件を出して、温度0.5で5件、sudachiの結果は今まで通りで、重複しないように確認しながら推論して、フリガナに当てはまるかに変更します、各温度の内部でも名前が重複しないように、既出のsudachi結果と既出温度での結果とも重複しないように各温度内での出力にも注意してください。現在のアルゴリズムでは1パターン以外が出てこないのでなぜ1パターンしか出ないのかを解決する必要があります、複数のフリガナを推論して、キーパンチャーの入力間違いの可能性が高い内容にフラグを立てるのがこのリポジトリの目標です。
+7. The previous two-phase method produced only a single candidate in some cases.
+8. The updated multi-temperature approach generates more variations and flags potential keypuncher errors.
 
 ## Error handling
 * Process in batches of 50 rows and retry with exponential backoff on API rate limits.

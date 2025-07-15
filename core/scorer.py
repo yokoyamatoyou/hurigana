@@ -10,7 +10,8 @@ from functools import lru_cache
 
 client = openai.OpenAI()
 async_client = openai.AsyncOpenAI()
-DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+# Default model uses GPT-4.1 mini with knowledge cutoff 2025-04-14
+DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini-2025-04-14")
 
 # regex for the first katakana sequence; also accepts half/full-width digits
 # match contiguous katakana or full/half width digits

@@ -102,7 +102,7 @@ def test_default_model_when_env_missing(monkeypatch):
     import importlib
 
     mod = importlib.reload(scorer)
-    assert mod.DEFAULT_MODEL == "gpt-4o-mini"
+    assert mod.DEFAULT_MODEL == "gpt-4.1-mini-2025-04-14"
 
 
 def test_async_gpt_candidates():
