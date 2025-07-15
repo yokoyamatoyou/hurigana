@@ -18,6 +18,8 @@
    ```bash
    export OPENAI_API_KEY="sk-..."
    ```
+   デフォルトのモデルは `gpt-4.1-mini-2025-04-14` （ナレッジカットオフ 2025-04-14）です。
+   必要に応じて `OPENAI_MODEL` 環境変数で変更できます。
 4. 以下のコマンドでアプリを起動します。
    ```bash
    streamlit run app.py
