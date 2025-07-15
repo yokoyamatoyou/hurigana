@@ -40,16 +40,15 @@ These guidelines standardize how operators type readings:
 ## Processing Flow
 1. Read Excel file with pandas.
 2. For each name, use SudachiPy with `SudachiDict-full` to get the standard reading. If found, confidence 95% with reason "辞書候補1位一致".
-3. For unknown words, call GPT-4.1 mini (knowledge cutoff 2025-04-14) in three steps:
+3. For unknown words, call GPT-4.1 mini (knowledge cutoff 2025-04-14) in two steps:
    - `temperature=0.0` returning three candidates.
-   - `temperature=0.2` returning five candidates.
-   - `temperature=0.5` returning another five.
+   - `temperature=0.7` returning five candidates.
    - Deduplicate results and keep at most 13 candidates in total.
 4. Calculate confidence based on candidate ranking and provide a short reason (within 20 characters).
 5. Combine results into DataFrame and export to Excel using `openpyxl` to preserve formatting.
 6. Provide a download button for the processed file.
-7. The previous two-phase method produced only a single candidate in some cases.
-8. The updated multi-temperature approach generates more variations and flags potential keypuncher errors.
+7. The earlier three-temperature method has been simplified to the above two steps for speed.
+8. This still generates varied candidates and flags potential keypuncher errors.
 
 ## Error handling
 * Process in batches of 50 rows and retry with exponential backoff on API rate limits.
