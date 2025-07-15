@@ -13,6 +13,8 @@ client = openai.OpenAI()
 async_client = openai.AsyncOpenAI()
 # Default model uses GPT-4.1 mini with knowledge cutoff 2025-04-14
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini-2025-04-14")
+# Maximum number of unique candidate readings kept
+MAX_CANDIDATES = 9
 
 # regex for the first katakana sequence; also accepts half/full-width digits
 # match contiguous katakana or full/half width digits
@@ -82,9 +84,9 @@ def gpt_candidates(name: str) -> List[str]:
             if norm not in seen:
                 seen.add(norm)
                 cand.append(norm)
-            if len(cand) >= 9:
+            if len(cand) >= MAX_CANDIDATES:
                 break
-        if len(cand) >= 9:
+        if len(cand) >= MAX_CANDIDATES:
             break
     return cand
 
@@ -121,9 +123,9 @@ async def async_gpt_candidates(name: str) -> List[str]:
             if norm not in seen:
                 seen.add(norm)
                 cand.append(norm)
-            if len(cand) >= 9:
+            if len(cand) >= MAX_CANDIDATES:
                 break
-        if len(cand) >= 9:
+        if len(cand) >= MAX_CANDIDATES:
             break
     return cand
 
