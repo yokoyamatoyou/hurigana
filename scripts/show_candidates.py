@@ -2,7 +2,12 @@ import asyncio
 from core import parser
 from core.scorer import _acall_with_backoff, _clean_reading, DEFAULT_MODEL
 
-CONFIGS = [(0.0, 3), (0.7, 5)]
+# GPT temperature and candidate count pairs used by the main algorithm.
+# Keep this script consistent with ``core.scorer``.
+CONFIGS = [
+    (0.0, 3),
+    (0.7, 5),
+]
 
 names = [
     ("野々村　美枝子", "ﾉﾉﾑﾗ ﾐｴｺ"),
