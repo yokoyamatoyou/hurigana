@@ -232,3 +232,27 @@ def test_process_dataframe_uses_correct_sudachi():
     assert g_mock.call_count == 1
     assert list(out['信頼度']) == [0, 100]
     assert list(out['理由']) == ['候補外･要確認', '辞書候補一致']
+
+
+
+
+def test_async_process_dataframe_uses_correct_sudachi():
+    df = pd.DataFrame({'名前': ['太郎', '花子'], 'フリガナ': ['ハナコ', 'ハナコ']})
+
+    def sudachi_side(name: str) -> str:
+        return {'太郎': 'タロウ', '花子': 'ハナコ'}[name]
+
+    def gpt_side(name: str) -> list[str]:
+        return {'太郎': ['タロウ'], '花子': ['ハナコ']}[name]
+
+    async def run_test():
+        with patch('core.utils.parser.sudachi_reading', side_effect=sudachi_side), patch(
+            'core.utils.scorer.async_gpt_candidates', side_effect=gpt_side
+        ) as g_mock:
+            out = await utils.async_process_dataframe(df, '名前', 'フリガナ', batch_size=1)
+        return out, g_mock.call_count
+
+    result, count = asyncio.run(run_test())
+    assert count == 1
+    assert list(result['信頼度']) == [0, 100]
+    assert list(result['理由']) == ['候補外･要確認', '辞書候補一致']
