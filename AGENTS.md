@@ -41,8 +41,9 @@ These guidelines standardize how operators type readings:
 1. Read Excel file with pandas.
 2. For each name, use SudachiPy with `SudachiDict-full` to get the standard reading. If found, confidence 100% with reason "辞書候補1位一致".
 3. For unknown words, call GPT-4.1 mini in two phases:
-   - Phase 1: `temperature=0.0`, `logprobs=5` to get top reading.
-   - Phase 2: `temperature=0.7`, `top_p=1.0`, `n=5` to get up to five candidates.
+   - Phase 1: `temperature=0.0`, `n=3` to get three unique readings.
+   - Phase 2: `temperature=0.7`, `n=5` for up to five additional candidates.
+   - Sudachi results and earlier GPT output are excluded to ensure uniqueness.
    - This two-phase algorithm is kept as-is for consistent scoring.
 4. Calculate confidence based on candidate ranking and provide a short reason (within 20 characters).
 5. Combine results into DataFrame and export to Excel using `openpyxl` to preserve formatting.
