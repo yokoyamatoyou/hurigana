@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List
 from .normalize import normalize_kana, normalize_for_keypuncher_check
+from . import parser
 import time
 import os
 import asyncio
@@ -55,12 +56,19 @@ async def _acall_with_backoff(**kwargs):
 
 @lru_cache(maxsize=128)
 def gpt_candidates(name: str) -> List[str]:
-    """Return candidate readings using multi-temperature prompts."""
+    """Return candidate readings for ``name`` using Sudachi and GPT."""
     prompt = f"{name} の読みをカタカナで答えて"
-    configs = [(0.0, 3), (0.2, 5), (0.5, 5)]
+    configs = [(0.0, 3), (0.7, 5)]
 
     cand: List[str] = []
     seen = set()
+
+    sudachi = parser.sudachi_reading(name)
+    if sudachi:
+        norm = normalize_kana(sudachi)
+        seen.add(norm)
+        cand.append(norm)
+
     for temp, n in configs:
         res = _call_with_backoff(
             model=DEFAULT_MODEL,
@@ -82,9 +90,9 @@ def gpt_candidates(name: str) -> List[str]:
 
 
 async def async_gpt_candidates(name: str) -> List[str]:
-    """Async version of ``gpt_candidates`` using multiple temperatures."""
+    """Asynchronous version of ``gpt_candidates``."""
     prompt = f"{name} の読みをカタカナで答えて"
-    configs = [(0.0, 3), (0.2, 5), (0.5, 5)]
+    configs = [(0.0, 3), (0.7, 5)]
 
     tasks = [
         _acall_with_backoff(
@@ -100,6 +108,13 @@ async def async_gpt_candidates(name: str) -> List[str]:
 
     cand: List[str] = []
     seen = set()
+
+    sudachi = parser.sudachi_reading(name)
+    if sudachi:
+        norm = normalize_kana(sudachi)
+        seen.add(norm)
+        cand.append(norm)
+
     for res in results:
         for c in res.choices:
             norm = _clean_reading(c.message.content.strip())

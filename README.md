@@ -53,11 +53,13 @@ produce consistent results:
 
 ### Candidate Generation
 
-Unknown names are sent to GPT-4.1 mini (knowledge cutoff 2025-04-14) three times with increasing temperatures.
-The first request uses ``temperature=0.0`` and returns three candidates.
-The second uses ``temperature=0.2`` to get five more. A final call at
-``temperature=0.5`` provides another five. Duplicate readings are removed
-before scoring.
+Unknown names are first looked up with Sudachi. If a dictionary reading is found
+it becomes the top candidate. The list is then expanded by two GPT calls:
+
+* ``temperature=0.0`` returning three candidates
+* ``temperature=0.7`` returning five candidates
+
+Duplicates are removed before scoring.
 
 ## Usage
 
