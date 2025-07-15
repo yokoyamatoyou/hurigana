@@ -2,7 +2,7 @@ from __future__ import annotations
 import pandas as pd
 from io import BytesIO
 from . import parser, scorer, db
-from .normalize import normalize_kana, normalize_for_keypuncher_check
+from .normalize import normalize_for_keypuncher_check
 import sqlite3
 import asyncio
 from asyncio import Semaphore
