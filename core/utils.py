@@ -73,8 +73,8 @@ def process_dataframe(
 
         sudachi_kana = parser.sudachi_reading(name)
         if sudachi_kana and normalize_for_keypuncher_check(sudachi_kana) == normalize_for_keypuncher_check(reading):
-            confs[idx] = 95
-            reasons[idx] = "辞書候補1位一致"
+            confs[idx] = 100
+            reasons[idx] = "辞書候補一致"
             processed += 1
             if on_progress:
                 on_progress(processed, total)
@@ -90,7 +90,7 @@ def process_dataframe(
             rows_to_save = []
             for name, cands in zip(chunk, results):
                 for idx, reading in pending[name]:
-                    conf, reason = scorer.calc_confidence(reading, cands)
+                    conf, reason = scorer.calc_confidence(reading, cands, sudachi_kana)
                     confs[idx] = conf
                     reasons[idx] = reason
                     if db_conn:
@@ -165,8 +165,8 @@ async def async_process_dataframe(
 
         sudachi_kana = parser.sudachi_reading(name)
         if sudachi_kana and normalize_for_keypuncher_check(sudachi_kana) == normalize_for_keypuncher_check(reading):
-            confs[idx] = 95
-            reasons[idx] = "辞書候補1位一致"
+            confs[idx] = 100
+            reasons[idx] = "辞書候補一致"
             processed += 1
             if on_progress:
                 on_progress(processed, total)
@@ -186,7 +186,7 @@ async def async_process_dataframe(
                 name, candidates = await coro
                 name_to_cands[name] = candidates
                 for idx, reading in pending[name]:
-                    conf, reason = scorer.calc_confidence(reading, candidates)
+                    conf, reason = scorer.calc_confidence(reading, candidates, sudachi_kana)
                     confs[idx] = conf
                     reasons[idx] = reason
                     if db_conn:

@@ -169,3 +169,15 @@ def test_gpt_candidates_normalizes_duplicates():
         result = scorer.gpt_candidates("宮川亜紀")
 
     assert result == ["ミヤガワアキ", "ミヤカワアキ"]
+
+
+def test_calc_confidence_dictionary_match():
+    conf, reason = scorer.calc_confidence("タロウ", ["タロウ"], "タロウ")
+    assert conf == 100
+    assert reason == "辞書候補一致"
+
+
+def test_calc_confidence_second_candidate():
+    conf, reason = scorer.calc_confidence("タロウ", ["タロウゾ", "タロウ"])
+    assert conf == 80
+    assert reason == "候補2位一致"

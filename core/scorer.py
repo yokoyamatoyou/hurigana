@@ -128,17 +128,42 @@ async def async_gpt_candidates(name: str) -> List[str]:
     return cand
 
 
-def calc_confidence(row_reading: str, candidates: List[str]) -> tuple[int, str]:
-    """Return confidence percentage and short reason."""
+def calc_confidence(
+    row_reading: str, candidates: List[str], sudachi: str | None = None
+) -> tuple[int, str]:
+    """Return confidence percentage and short reason.
+
+    ``candidates`` must be in the same order returned by
+    :func:`gpt_candidates`, i.e. Sudachi's reading first (if present)
+    followed by GPT results.
+    """
+
     target = normalize_for_keypuncher_check(row_reading)
-    for idx, reading in enumerate(candidates, start=1):
-        if target == normalize_for_keypuncher_check(reading):
-            if idx == 1:
+
+    sudachi_norm = (
+        normalize_for_keypuncher_check(sudachi) if sudachi else None
+    )
+
+    # dictionary match
+    if sudachi_norm and target == sudachi_norm:
+        return 100, "辞書候補一致"
+
+    gpt_index = 0
+    for cand in candidates:
+        cand_norm = normalize_for_keypuncher_check(cand)
+        if sudachi_norm and cand_norm == sudachi_norm:
+            # skip sudachi candidate already handled
+            continue
+        gpt_index += 1
+        if target == cand_norm:
+            if gpt_index == 1:
                 return 85, "候補1位一致"
-            elif idx <= 3:
-                return 70, "3位内一致"
-            elif idx <= 10:
-                return 60, "10位内一致"
-            else:
-                break
-    return 30, "候補外･要確認"
+            elif gpt_index == 2:
+                return 80, "候補2位一致"
+            elif gpt_index == 3:
+                return 70, "候補3位一致"
+            elif gpt_index <= 8:
+                return 60, "5位内一致"
+            break
+
+    return 0, "候補外･要確認"
