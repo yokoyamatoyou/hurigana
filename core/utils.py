@@ -183,12 +183,10 @@ async def async_process_dataframe(
         for start in range(0, len(names), batch_size):
             chunk = names[start:start + batch_size]
             tasks = [fetch_candidates(n) for n in chunk]
-            name_to_cands = {}
             rows_to_save = []
 
             for coro in asyncio.as_completed(tasks):
                 name, candidates = await coro
-                name_to_cands[name] = candidates
                 info = pending[name]
                 sudachi = info.get("sudachi")
                 for idx, reading in info["rows"]:

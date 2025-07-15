@@ -2,7 +2,7 @@ import asyncio
 from core import parser
 from core.scorer import _acall_with_backoff, _clean_reading, DEFAULT_MODEL
 
-CONFIGS = [(0.0, 3), (0.2, 5), (0.5, 5)]
+CONFIGS = [(0.0, 3), (0.7, 5)]
 
 names = [
     ("野々村　美枝子", "ﾉﾉﾑﾗ ﾐｴｺ"),

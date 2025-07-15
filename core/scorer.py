@@ -82,9 +82,9 @@ def gpt_candidates(name: str) -> List[str]:
             if norm not in seen:
                 seen.add(norm)
                 cand.append(norm)
-            if len(cand) >= 13:
+            if len(cand) >= 9:
                 break
-        if len(cand) >= 13:
+        if len(cand) >= 9:
             break
     return cand
 
@@ -121,9 +121,9 @@ async def async_gpt_candidates(name: str) -> List[str]:
             if norm not in seen:
                 seen.add(norm)
                 cand.append(norm)
-            if len(cand) >= 13:
+            if len(cand) >= 9:
                 break
-        if len(cand) >= 13:
+        if len(cand) >= 9:
             break
     return cand
 
@@ -162,7 +162,7 @@ def calc_confidence(
                 return 80, "候補2位一致"
             elif gpt_index == 3:
                 return 70, "候補3位一致"
-            elif gpt_index <= 8:
+            elif gpt_index <= 5:
                 return 60, "5位内一致"
             break
 
