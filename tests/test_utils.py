@@ -18,8 +18,8 @@ def test_process_dataframe_sudachi_match():
     with patch('core.utils.scorer.gpt_candidates', return_value=[]) as mock:
         out = process_dataframe(df, '名前', 'フリガナ')
 
-    assert list(out['信頼度']) == [95, 95]
-    assert list(out['理由']) == ['辞書候補1位一致', '辞書候補1位一致']
+    assert list(out['信頼度']) == [100, 100]
+    assert list(out['理由']) == ['辞書候補一致', '辞書候補一致']
     assert mock.call_count == 0
 
 
@@ -29,8 +29,8 @@ def test_process_dataframe_normalizes_reading():
     with patch('core.utils.parser.sudachi_reading', return_value='ムラナカシンジ'):
         out = process_dataframe(df, '名前', 'フリガナ')
 
-    assert out['信頼度'][0] == 95
-    assert out['理由'][0] == '辞書候補1位一致'
+    assert out['信頼度'][0] == 100
+    assert out['理由'][0] == '辞書候補一致'
 
 
 def test_process_dataframe_long_name():
@@ -65,6 +65,22 @@ def test_process_dataframe_gpt_called():
     conf_mock.assert_called_once()
 
 
+def test_process_dataframe_second_candidate_scored():
+    df = pd.DataFrame({'名前': ['未知'], 'フリガナ': ['ミチ']})
+
+    with patch(
+        'core.utils.parser.sudachi_reading',
+        return_value=None,
+    ), patch(
+        'core.utils.scorer.gpt_candidates',
+        return_value=['ミチョ', 'ミチ'],
+    ):
+        out = process_dataframe(df, '名前', 'フリガナ')
+
+    assert out['信頼度'][0] == 80
+    assert out['理由'][0] == '候補2位一致'
+
+
 def test_process_dataframe_nan_name():
     df = pd.DataFrame({'名前': [pd.NA], 'フリガナ': ['ミチ']})
 
@@ -82,7 +98,7 @@ def test_process_dataframe_nan_furigana():
     with patch('core.utils.scorer.gpt_candidates', return_value=['タロウ']) as mock:
         out = process_dataframe(df, '名前', 'フリガナ')
 
-    assert out['信頼度'][0] == 30
+    assert out['信頼度'][0] == 0
     assert out['理由'][0] == '候補外･要確認'
     mock.assert_called_once_with('太郎')
 
