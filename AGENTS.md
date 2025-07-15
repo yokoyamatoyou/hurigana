@@ -47,10 +47,10 @@ These guidelines standardize how operators type readings:
 4. Calculate confidence based on candidate ranking and provide a short reason (within 20 characters).
 5. Combine results into DataFrame and export to Excel using `openpyxl` to preserve formatting.
 6. Provide a download button for the processed file.
-7. 上記のアルゴリズムでは不具合発生中、指示内容ではアルゴリズムが目標を達成できません。
-8. 具体的に言うと、宮川　亜紀という名前に対して1パターンの名前 宮川　亜紀     ﾐﾔｶﾜ ｱｷ   がフリガナとして登録されており、結果は候補外･要確認です。
-しかし名前の候補は   [ミヤガワアキ, ]のみで複数パターンが推論されていません。
-アルゴリズムを変更して、上位ｎ件を一回のプロンプトで温度0で3件、温度0.2で5件を出して、温度0.5で5件、sudachiの結果は今まで通りで、重複しないように確認しながら推論して、フリガナに当てはまるかに変更します、各温度の内部でも名前が重複しないように、既出のsudachi結果と既出温度での結果とも重複しないように各温度内での出力にも注意してください。現在のアルゴリズムでは1パターン以外が出てこないのでなぜ1パターンしか出ないのかを解決する必要があります、複数のフリガナを推論して、キーパンチャーの入力間違いの可能性が高い内容にフラグを立てるのがこのリポジトリの目標です。
+7. 旧実装では候補が 1 件しか得られない問題がありました。そのため現在は次の二段階で GPT を呼び出して候補を集めます。
+   - **温度 0.0** で 3 件取得し、重複を除外。
+   - **温度 0.7** でさらに 5 件取得し、Sudachi 候補や前段階と重複しないものを採用します。
+   この結果、辞書候補を含め最大 9 件の読み候補から信頼度を判定します。
 
 ## Error handling
 * Process in batches of 50 rows and retry with exponential backoff on API rate limits.
