@@ -59,7 +59,8 @@ it becomes the top candidate. The list is then expanded by two GPT calls:
 * ``temperature=0.0`` returning three candidates
 * ``temperature=0.7`` returning five candidates
 
-Duplicates are removed before scoring.
+Duplicates are removed before scoring. The final list keeps at most
+``9`` unique candidates.
 
 ## Usage
 

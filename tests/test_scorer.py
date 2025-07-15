@@ -197,6 +197,33 @@ def test_gpt_candidates_limits_to_nine_candidates():
     assert len(result) <= 9
 
 
+def test_gpt_candidates_returns_unique_candidates():
+    scorer.gpt_candidates.cache_clear()
+    resp1 = types.SimpleNamespace(
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content=f"カナ{i}"))
+            for i in range(3)
+        ]
+    )
+    resp2 = types.SimpleNamespace(
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content=f"カナ{i}"))
+            for i in range(2, 15)
+        ]
+    )
+    with patch(
+        "core.scorer.parser.sudachi_reading",
+        return_value=None,
+    ), patch(
+        "core.scorer._call_with_backoff",
+        side_effect=[resp1, resp2],
+    ):
+        result = scorer.gpt_candidates("太郎")
+
+    assert len(result) <= 9
+    assert len(result) == len(set(result))
+
+
 def test_calc_confidence_dictionary_match():
     conf, reason = scorer.calc_confidence("タロウ", ["タロウ"], "タロウ")
     assert conf == 100
