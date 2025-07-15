@@ -39,7 +39,7 @@ These guidelines standardize how operators type readings:
 
 ## Processing Flow
 1. Read Excel file with pandas.
-2. For each name, use SudachiPy with `SudachiDict-full` to get the standard reading. If found, confidence 95% with reason "辞書候補1位一致".
+2. For each name, use SudachiPy with `SudachiDict-full` to get the standard reading. If found, confidence 100% with reason "辞書候補1位一致".
 3. For unknown words, call GPT-4.1 mini in two phases:
    - Phase 1: `temperature=0.0`, `logprobs=5` to get top reading.
    - Phase 2: `temperature=0.7`, `top_p=1.0`, `n=5` to get up to five candidates.
