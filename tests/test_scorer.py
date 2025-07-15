@@ -171,6 +171,32 @@ def test_gpt_candidates_normalizes_duplicates():
     assert result == ["ミヤガワアキ", "ミヤカワアキ"]
 
 
+def test_gpt_candidates_limits_to_nine_candidates():
+    scorer.gpt_candidates.cache_clear()
+    resp1 = types.SimpleNamespace(
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content=f"カナ{i}"))
+            for i in range(3)
+        ]
+    )
+    resp2 = types.SimpleNamespace(
+        choices=[
+            types.SimpleNamespace(message=types.SimpleNamespace(content=f"カナ{3+i}"))
+            for i in range(10)
+        ]
+    )
+    with patch(
+        "core.scorer.parser.sudachi_reading",
+        return_value=None,
+    ), patch(
+        "core.scorer._call_with_backoff",
+        side_effect=[resp1, resp2],
+    ):
+        result = scorer.gpt_candidates("太郎")
+
+    assert len(result) <= 9
+
+
 def test_calc_confidence_dictionary_match():
     conf, reason = scorer.calc_confidence("タロウ", ["タロウ"], "タロウ")
     assert conf == 100
@@ -181,3 +207,10 @@ def test_calc_confidence_second_candidate():
     conf, reason = scorer.calc_confidence("タロウ", ["タロウゾ", "タロウ"])
     assert conf == 80
     assert reason == "候補2位一致"
+
+
+def test_calc_confidence_outside_top_five_returns_zero():
+    candidates = [f"タロウ{i}" for i in range(6)]
+    conf, reason = scorer.calc_confidence("タロウ5", candidates)
+    assert conf == 0
+    assert reason == "候補外･要確認"
