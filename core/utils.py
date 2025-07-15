@@ -43,7 +43,7 @@ def process_dataframe(
 
     total = len(df)
     processed = 0
-    pending: dict[str, list[tuple[int, str]]] = {}
+    pending: dict[str, dict[str, object]] = {}
 
     has_furi = furi_col in df.columns
     readings = df[furi_col] if has_furi else ["" for _ in range(len(df))]
@@ -73,24 +73,33 @@ def process_dataframe(
 
         sudachi_kana = parser.sudachi_reading(name)
         if sudachi_kana and normalize_for_keypuncher_check(sudachi_kana) == normalize_for_keypuncher_check(reading):
-            confs[idx] = 95
+            confs[idx] = 100
             reasons[idx] = "辞書候補1位一致"
             processed += 1
             if on_progress:
                 on_progress(processed, total)
             continue
 
-        pending.setdefault(name, []).append((idx, reading))
+        entry = pending.setdefault(name, {"rows": [], "sudachi": sudachi_kana})
+        entry["rows"].append((idx, reading))
 
     if pending:
         names = list(pending)
         for start in range(0, len(names), batch_size):
             chunk = names[start:start + batch_size]
-            results = [scorer.gpt_candidates(n) for n in chunk]
+            results = [
+                scorer.gpt_candidates(n, pending[n]["sudachi"])
+                for n in chunk
+            ]
             rows_to_save = []
             for name, cands in zip(chunk, results):
-                for idx, reading in pending[name]:
-                    conf, reason = scorer.calc_confidence(reading, cands)
+                sudachi_val = pending[name]["sudachi"]
+                all_cands = [sudachi_val] + cands if sudachi_val else cands
+                has_sudachi = bool(sudachi_val)
+                for idx, reading in pending[name]["rows"]:
+                    conf, reason = scorer.calc_confidence(
+                        reading, all_cands, has_sudachi
+                    )
                     confs[idx] = conf
                     reasons[idx] = reason
                     if db_conn:
@@ -127,15 +136,15 @@ async def async_process_dataframe(
     processed = 0
     sem = Semaphore(concurrency)
 
-    async def fetch_candidates(name: str) -> tuple[str, list[str]]:
+    async def fetch_candidates(name: str, exclude: str | None) -> tuple[str, list[str]]:
         async with sem:
             try:
-                cands = await scorer.async_gpt_candidates(name)
+                cands = await scorer.async_gpt_candidates(name, exclude)
             except Exception:
                 cands = []
         return name, cands
 
-    pending: dict[str, list[tuple[int, str]]] = {}
+    pending: dict[str, dict[str, object]] = {}
 
     has_furi = furi_col in df.columns
     readings = df[furi_col] if has_furi else ["" for _ in range(len(df))]
@@ -165,28 +174,34 @@ async def async_process_dataframe(
 
         sudachi_kana = parser.sudachi_reading(name)
         if sudachi_kana and normalize_for_keypuncher_check(sudachi_kana) == normalize_for_keypuncher_check(reading):
-            confs[idx] = 95
+            confs[idx] = 100
             reasons[idx] = "辞書候補1位一致"
             processed += 1
             if on_progress:
                 on_progress(processed, total)
             continue
 
-        pending.setdefault(name, []).append((idx, reading))
+        entry = pending.setdefault(name, {"rows": [], "sudachi": sudachi_kana})
+        entry["rows"].append((idx, reading))
 
     if pending:
         names = list(pending)
         for start in range(0, len(names), batch_size):
             chunk = names[start:start + batch_size]
-            tasks = [fetch_candidates(n) for n in chunk]
+            tasks = [fetch_candidates(n, pending[n]["sudachi"]) for n in chunk]
             name_to_cands = {}
             rows_to_save = []
 
             for coro in asyncio.as_completed(tasks):
                 name, candidates = await coro
                 name_to_cands[name] = candidates
-                for idx, reading in pending[name]:
-                    conf, reason = scorer.calc_confidence(reading, candidates)
+                sudachi_val = pending[name]["sudachi"]
+                all_cands = [sudachi_val] + candidates if sudachi_val else candidates
+                has_sudachi = bool(sudachi_val)
+                for idx, reading in pending[name]["rows"]:
+                    conf, reason = scorer.calc_confidence(
+                        reading, all_cands, has_sudachi
+                    )
                     confs[idx] = conf
                     reasons[idx] = reason
                     if db_conn:

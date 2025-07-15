@@ -42,13 +42,7 @@ def test_gpt_candidates_caches_result():
             for _ in range(5)
         ]
     )
-    resp3 = types.SimpleNamespace(
-        choices=[
-            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ4"))
-            for _ in range(5)
-        ]
-    )
-    responses = [resp1, resp2, resp3]
+    responses = [resp1, resp2]
 
     def side_effect(**kwargs):
         return responses.pop(0)
@@ -59,7 +53,7 @@ def test_gpt_candidates_caches_result():
 
     assert first == ["カナ1", "カナ2", "カナ3", "カナ4"]
     assert second == ["カナ1", "カナ2", "カナ3", "カナ4"]
-    assert mock_call.call_count == 3
+    assert mock_call.call_count == 2
 
 
 def test_gpt_candidates_uses_env_var(monkeypatch):
@@ -81,14 +75,8 @@ def test_gpt_candidates_uses_env_var(monkeypatch):
             for _ in range(5)
         ]
     )
-    resp3 = types.SimpleNamespace(
-        choices=[
-            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ4"))
-            for _ in range(5)
-        ]
-    )
     with patch(
-        "core.scorer._call_with_backoff", side_effect=[resp1, resp2, resp3]
+        "core.scorer._call_with_backoff", side_effect=[resp1, resp2]
     ) as mock_call:
         mod.gpt_candidates("太郎")
 
@@ -102,7 +90,7 @@ def test_default_model_when_env_missing(monkeypatch):
     import importlib
 
     mod = importlib.reload(scorer)
-    assert mod.DEFAULT_MODEL == "gpt-4o-mini"
+    assert mod.DEFAULT_MODEL == "gpt-4.1-mini-2025-04-14"
 
 
 def test_async_gpt_candidates():
@@ -119,20 +107,14 @@ def test_async_gpt_candidates():
             for _ in range(5)
         ]
     )
-    resp3 = types.SimpleNamespace(
-        choices=[
-            types.SimpleNamespace(message=types.SimpleNamespace(content="カナ4"))
-            for _ in range(5)
-        ]
-    )
     async def run_test():
         with patch(
             "core.scorer._acall_with_backoff",
-            new=AsyncMock(side_effect=[resp1, resp2, resp3]),
+            new=AsyncMock(side_effect=[resp1, resp2]),
         ) as mock_call:
             result = await scorer.async_gpt_candidates("太郎")
         assert result == ["カナ1", "カナ2", "カナ3", "カナ4"]
-        assert mock_call.call_count == 3
+        assert mock_call.call_count == 2
     
     asyncio.run(run_test())
 
@@ -168,15 +150,7 @@ def test_gpt_candidates_normalizes_duplicates():
             ),
         ]
     )
-    resp3 = types.SimpleNamespace(
-        choices=[
-            types.SimpleNamespace(
-                message=types.SimpleNamespace(content="ミヤガワ アキ")
-            )
-            for _ in range(5)
-        ]
-    )
-    with patch("core.scorer._call_with_backoff", side_effect=[resp1, resp2, resp3]):
+    with patch("core.scorer._call_with_backoff", side_effect=[resp1, resp2]):
         result = scorer.gpt_candidates("宮川亜紀")
 
     assert result == ["ミヤガワアキ", "ミヤカワアキ"]

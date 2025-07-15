@@ -21,7 +21,7 @@ Set your OpenAI API key:
 export OPENAI_API_KEY="sk-..."
 ```
 
-Optionally choose the OpenAI model (defaults to `gpt-4o-mini`):
+Optionally choose the OpenAI model (defaults to `gpt-4.1-mini-2025-04-14`):
 
 ```bash
 export OPENAI_MODEL="gpt-3.5-turbo"
@@ -53,11 +53,11 @@ produce consistent results:
 
 ### Candidate Generation
 
-Unknown names are sent to GPT-4o mini three times with increasing temperatures.
-The first request uses ``temperature=0.0`` and returns three candidates.
-The second uses ``temperature=0.2`` to get five more. A final call at
-``temperature=0.5`` provides another five. Duplicate readings are removed
-before scoring.
+Unknown names are sent to GPT-4.1 mini twice.
+The first request uses ``temperature=0.0`` and returns three unique candidates.
+A second call with ``temperature=0.7`` provides up to five more.
+If Sudachi provides a reading it is prepended to the list, giving at most nine
+unique candidates.
 
 ## Usage
 
@@ -97,5 +97,5 @@ similar to the following:
 
 ```
      名前     フリガナ  信頼度       理由
-0  田中　堅  ﾀﾅｶ ｶﾀｼ   30  候補外･要確認
+0  田中　堅  ﾀﾅｶ ｶﾀｼ    0  候補外･要確認
 ```

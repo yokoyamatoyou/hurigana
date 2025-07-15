@@ -63,3 +63,12 @@ def normalize_for_keypuncher_check(text: str | None) -> str:
 
     # step3: half-width conversion with dakuten split
     return jaconv.z2h(out, kana=True, digit=True, ascii=False)
+
+
+def strip_voicing(text: str | None) -> str:
+    """Return string without dakuten/handakuten for loose matching."""
+    if not text:
+        return ""
+    out = normalize_kana(text)
+    decomposed = unicodedata.normalize("NFD", out)
+    return "".join(ch for ch in decomposed if ch not in ("\u3099", "\u309A"))

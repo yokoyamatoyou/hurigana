@@ -18,7 +18,7 @@ def test_process_dataframe_sudachi_match():
     with patch('core.utils.scorer.gpt_candidates', return_value=[]) as mock:
         out = process_dataframe(df, '名前', 'フリガナ')
 
-    assert list(out['信頼度']) == [95, 95]
+    assert list(out['信頼度']) == [100, 100]
     assert list(out['理由']) == ['辞書候補1位一致', '辞書候補1位一致']
     assert mock.call_count == 0
 
@@ -29,7 +29,7 @@ def test_process_dataframe_normalizes_reading():
     with patch('core.utils.parser.sudachi_reading', return_value='ムラナカシンジ'):
         out = process_dataframe(df, '名前', 'フリガナ')
 
-    assert out['信頼度'][0] == 95
+    assert out['信頼度'][0] == 100
     assert out['理由'][0] == '辞書候補1位一致'
 
 
@@ -60,7 +60,7 @@ def test_process_dataframe_gpt_called():
     ) as conf_mock:
         out = process_dataframe(df, '名前', 'フリガナ')
 
-    assert out['信頼度'][0] == 85
+    assert out['信頼度'][0] == 99
     assert out['理由'][0] == '候補1位一致'
     conf_mock.assert_called_once()
 
@@ -82,9 +82,9 @@ def test_process_dataframe_nan_furigana():
     with patch('core.utils.scorer.gpt_candidates', return_value=['タロウ']) as mock:
         out = process_dataframe(df, '名前', 'フリガナ')
 
-    assert out['信頼度'][0] == 30
+    assert out['信頼度'][0] == 0
     assert out['理由'][0] == '候補外･要確認'
-    mock.assert_called_once_with('太郎')
+    mock.assert_called_once_with('太郎', 'タロウ')
 
 
 def test_to_excel_bytes_template():
@@ -182,7 +182,7 @@ def test_async_process_dataframe_deduplicates():
         return out
 
     result = asyncio.run(run_test())
-    assert list(result['信頼度']) == [85, 85]
+    assert list(result['信頼度']) == [99, 99]
     assert list(result['理由']) == ['候補1位一致', '候補1位一致']
 
 
@@ -195,5 +195,5 @@ def test_process_dataframe_deduplicates():
         out = process_dataframe(df, '名前', 'フリガナ', batch_size=1)
 
     assert g_mock.call_count == 1
-    assert list(out['信頼度']) == [85, 85]
+    assert list(out['信頼度']) == [99, 99]
     assert list(out['理由']) == ['候補1位一致', '候補1位一致']

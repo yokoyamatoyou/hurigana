@@ -1,6 +1,10 @@
 from __future__ import annotations
 from typing import List
-from .normalize import normalize_kana, normalize_for_keypuncher_check
+from .normalize import (
+    normalize_kana,
+    normalize_for_keypuncher_check,
+    strip_voicing,
+)
 import time
 import os
 import asyncio
@@ -10,7 +14,7 @@ from functools import lru_cache
 
 client = openai.OpenAI()
 async_client = openai.AsyncOpenAI()
-DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini-2025-04-14")
 
 # regex for the first katakana sequence; also accepts half/full-width digits
 # match contiguous katakana or full/half width digits
@@ -53,13 +57,15 @@ async def _acall_with_backoff(**kwargs):
 
 
 @lru_cache(maxsize=128)
-def gpt_candidates(name: str) -> List[str]:
+def gpt_candidates(name: str, exclude: str | None = None) -> List[str]:
     """Return candidate readings using multi-temperature prompts."""
     prompt = f"{name} の読みをカタカナで答えて"
-    configs = [(0.0, 3), (0.2, 5), (0.5, 5)]
+    configs = [(0.0, 3), (0.7, 5)]
 
     cand: List[str] = []
     seen = set()
+    if exclude:
+        seen.add(normalize_kana(exclude))
     for temp, n in configs:
         res = _call_with_backoff(
             model=DEFAULT_MODEL,
@@ -68,22 +74,22 @@ def gpt_candidates(name: str) -> List[str]:
             n=n,
             presence_penalty=1.0,
         )
+        count = 0
         for c in res.choices:
             norm = _clean_reading(c.message.content.strip())
             if norm not in seen:
                 seen.add(norm)
                 cand.append(norm)
-            if len(cand) >= 13:
+                count += 1
+            if count >= n:
                 break
-        if len(cand) >= 13:
-            break
     return cand
 
 
-async def async_gpt_candidates(name: str) -> List[str]:
+async def async_gpt_candidates(name: str, exclude: str | None = None) -> List[str]:
     """Async version of ``gpt_candidates`` using multiple temperatures."""
     prompt = f"{name} の読みをカタカナで答えて"
-    configs = [(0.0, 3), (0.2, 5), (0.5, 5)]
+    configs = [(0.0, 3), (0.7, 5)]
 
     tasks = [
         _acall_with_backoff(
@@ -99,30 +105,40 @@ async def async_gpt_candidates(name: str) -> List[str]:
 
     cand: List[str] = []
     seen = set()
-    for res in results:
+    if exclude:
+        seen.add(normalize_kana(exclude))
+    for res, (_, n) in zip(results, configs):
+        count = 0
         for c in res.choices:
             norm = _clean_reading(c.message.content.strip())
             if norm not in seen:
                 seen.add(norm)
                 cand.append(norm)
-            if len(cand) >= 13:
+                count += 1
+            if count >= n:
                 break
-        if len(cand) >= 13:
-            break
     return cand
 
 
-def calc_confidence(row_reading: str, candidates: List[str]) -> tuple[int, str]:
+def calc_confidence(
+    row_reading: str, candidates: List[str], has_sudachi: bool = False
+) -> tuple[int, str]:
     """Return confidence percentage and short reason."""
+
     target = normalize_for_keypuncher_check(row_reading)
+    target_base = strip_voicing(row_reading)
+
+    offset = 1 if has_sudachi else 0
     for idx, reading in enumerate(candidates, start=1):
-        if target == normalize_for_keypuncher_check(reading):
-            if idx == 1:
-                return 85, "候補1位一致"
-            elif idx <= 3:
-                return 70, "3位内一致"
-            elif idx <= 10:
-                return 60, "10位内一致"
-            else:
-                break
-    return 30, "候補外･要確認"
+        cand_norm = normalize_for_keypuncher_check(reading)
+        if target == cand_norm or target_base == strip_voicing(reading):
+            if has_sudachi and idx == 1:
+                return 100, "辞書候補1位一致"
+            rank = idx - offset
+            if 1 <= rank <= 3:
+                scores = {1: 99, 2: 90, 3: 80}
+                return scores[rank], f"候補{rank}位一致"
+            elif 4 <= rank <= 8:
+                scores = {1: 70, 2: 60, 3: 50, 4: 40, 5: 30}
+                return scores[rank - 3], "候補一致"
+    return 0, "候補外･要確認"
