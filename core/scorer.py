@@ -7,6 +7,9 @@ import os
 import asyncio
 import re
 import openai
+import json
+from collections import Counter
+import Levenshtein
 from functools import lru_cache
 
 client = openai.OpenAI()
@@ -169,3 +172,93 @@ def calc_confidence(
             break
 
     return 0, "候補外･要確認"
+
+
+class Scorer:
+    def get_scored_candidates(self, llm_results: List[str], original_furigana: str) -> dict:
+        """Return scored candidate list from multiple LLM results."""
+
+        all_candidates: list[str] = []
+        for res_json in llm_results:
+            try:
+                data = json.loads(res_json)
+                if isinstance(data.get("candidates"), list):
+                    for candidate in data["candidates"]:
+                        if isinstance(candidate, dict) and "furigana" in candidate:
+                            all_candidates.append(candidate["furigana"])
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        if not all_candidates:
+            return self._build_response(
+                "error",
+                "有効なフリガナ候補を生成できませんでした。",
+                original_furigana,
+                [],
+            )
+
+        counts = Counter(all_candidates)
+        unique_candidates = list(counts.keys())
+        scored_list = []
+        for f in unique_candidates:
+            score = self._calculate_score(f, original_furigana, counts[f], len(llm_results))
+            scored_list.append({"furigana": f, "score": round(score, 4)})
+
+        scored_list.sort(key=lambda x: x["score"], reverse=True)
+
+        return self._judge(original_furigana, scored_list)
+
+    def _calculate_score(
+        self, candidate_furigana: str, original_furigana: str, count: int, total_agents: int
+    ) -> float:
+        """Calculate score for a single candidate."""
+
+        support_score = count / total_agents
+        distance = Levenshtein.distance(candidate_furigana, original_furigana)
+        max_len = max(len(candidate_furigana), len(original_furigana))
+        similarity_score = (max_len - distance) / max_len if max_len > 0 else 1.0
+        return (support_score * 0.7) + (similarity_score * 0.3)
+
+    def _judge(self, original_furigana: str, scored_list: list[dict]) -> dict:
+        if not scored_list:
+            return self._build_response(
+                "error",
+                "評価可能な候補がありません。",
+                original_furigana,
+                [],
+            )
+
+        top = scored_list[0]
+        original_in_list = any(c["furigana"] == original_furigana for c in scored_list)
+
+        if not original_in_list:
+            return self._build_response(
+                "error",
+                "入力されたフリガナは候補にありません。入力ミスの可能性が非常に高いです。",
+                original_furigana,
+                scored_list,
+            )
+
+        if top["furigana"] == original_furigana:
+            return self._build_response(
+                "success",
+                "入力されたフリガナが最も可能性の高い候補です。",
+                original_furigana,
+                scored_list,
+            )
+
+        return self._build_response(
+            "warning",
+            f"入力された '{original_furigana}' よりも可能性の高い候補 '{top['furigana']}' があります。",
+            original_furigana,
+            scored_list,
+        )
+
+    def _build_response(self, status: str, message: str, original_furigana: str, candidates: list) -> dict:
+        return {
+            "status": status,
+            "message": message,
+            "input_furigana": original_furigana,
+            "candidates": candidates,
+        }
+
